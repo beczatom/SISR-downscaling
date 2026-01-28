@@ -1,1 +1,1 @@
-# SISR-downscaling
+# Downscaling climate data with physically-constrained single-image super resolution
