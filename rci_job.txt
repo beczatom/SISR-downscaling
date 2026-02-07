@@ -10,8 +10,8 @@
 #SBATCH --output=logs/result.out # Kam se ukládá textový výstup
 
 # Načtení modulů a aktivace prostředí
-module load Anaconda3
-source activate rci_env
+module load Python/3.12.3-GCCcore-13.3.0
+source ~/.rci/bin/activate
 
 # Spuštění samotného tréninku
-python train.py --epochs 50 --batch-size 32
+~/SISR-downscaling/train_script
