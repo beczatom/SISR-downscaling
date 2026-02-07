@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --partition=gpu          # Výběr GPU fronty
+#SBATCH --nodes=1                # Počet uzlů
+#SBATCH --ntasks-per-node=1      # Počet úloh
+#SBATCH --cpus-per-task=4        # Počet CPU jader
+#SBATCH --gres=gpu:1             # Počet GPU (např. 1x A100 nebo RTX)
+#SBATCH --mem=16G                # Operační paměť
+#SBATCH --time=24:00:00          # Maximální čas běhu
+#SBATCH --job-name=moje_sit      # Název úlohy
+#SBATCH --output=logs/result.out # Kam se ukládá textový výstup
+
+# Načtení modulů a aktivace prostředí
+module load Anaconda3
+source activate rci_env
+
+# Spuštění samotného tréninku
+python train.py --epochs 50 --batch-size 32

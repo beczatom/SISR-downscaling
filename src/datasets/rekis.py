@@ -18,7 +18,7 @@ class ReKIS(torch.utils.data.Dataset):
         Y.rio.set_spatial_dims("easting", "northing")
         # TODO how is it with resolution/shape?
         X = Y.rio.reproject(
-            Y.rio.crs, resolution=(2_000, 2_000), resampling=RESAMPLING
+            Y.rio.crs, resolution=(10_000, 10_000), resampling=RESAMPLING
         )
         self.X = torch.from_numpy(X.values).unsqueeze(1)
         self.Y = torch.from_numpy(Y.values).unsqueeze(1)
@@ -41,9 +41,9 @@ class ReKISDataModule(lightning.LightningDataModule):
         variable = "TM"  # TODO
         Y = xarray.open_mfdataset(self.path + variable + "/*.nc", decode_coords="all")
         Y = Y[variable]
-        self.trainset = ReKIS(Y.sel(time=slice("1961", "1965")))
-        self.valset = ReKIS(Y.sel(time=slice("1966", "1967")))
-        self.testset = ReKIS(Y.sel(time=slice("1968", "1968")))
+        self.trainset = ReKIS(Y.sel(time=slice("1961", "1992")))
+        self.valset = ReKIS(Y.sel(time=slice("1993", "2002")))
+        self.testset = ReKIS(Y.sel(time=slice("2003", "2012")))
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
