@@ -1,3 +1,6 @@
 notebooks/.ipynb_checkpoints/*
 notebooks/lightning_logs/*
 .idea
+logs/*
+src/downscaling.egg-info/*
+__pycache__
