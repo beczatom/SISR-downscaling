@@ -44,7 +44,6 @@ Deprecated==1.2.18
 distributed==2025.3.0
 docstring_parser==0.16
 donfig==0.8.1.post1
--e git+ssh://git@github.com/beczatom/SISR-downscaling.git@e83090a6bba51275499663b1d5dd87539c4f611d#egg=downscaling
 executing==2.2.0
 fastjsonschema==2.21.2
 filelock==3.17.0
