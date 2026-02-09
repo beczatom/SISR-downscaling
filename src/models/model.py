@@ -19,20 +19,19 @@ class AbstractModel(lightning.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = self.loss(y_hat, y)
+        loss = self.loss(y_hat, y, x)
 
-        # self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.train_metrics.update(y_hat, y)
         self.log_dict(self.train_metrics, on_step=False, on_epoch=True)
-
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = self.loss(y_hat, y)
+        loss = self.loss(y_hat, y, x)
 
-        # self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.val_metrics.update(y_hat, y)
         self.log_dict(self.val_metrics, on_step=False, on_epoch=True)
         return loss
@@ -40,7 +39,3 @@ class AbstractModel(lightning.LightningModule):
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         x, y = batch
         return self(x)
-
-    # def on_validation_epoch_end(self):
-    #     metrics = self.val_metrics.compute()
-    #     self.log('hp_metric', metrics['val/rmse'])
