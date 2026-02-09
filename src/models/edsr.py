@@ -31,12 +31,10 @@ class ResidualBlock(torch.nn.Module):
 
 
 class EDSR(AbstractModel):
-    def __init__(self, channels : int, scale_factor : int, loss):
+    def __init__(self, channels : int, scale_factor : int, features : int, residual_blocks : int, loss : torch.nn.Module):
         """Initialize the EDSR model without the loss function."""
         super().__init__()
         self.loss = loss
-        features = 256
-        residual_blocks = 32
 
         self.head = torch.nn.Sequential(
             torch.nn.Conv2d(channels, features, kernel_size=3, padding=1)
@@ -59,7 +57,3 @@ class EDSR(AbstractModel):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-4)
-
-    def set_loss(self, loss):
-        """Sets the loss function."""
-        self.loss = loss

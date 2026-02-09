@@ -3,6 +3,7 @@ import lightning.pytorch.cli
 
 import datasets
 import models
+import loss
 
 torch.set_float32_matmul_precision('high')
 
