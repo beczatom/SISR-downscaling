@@ -45,7 +45,7 @@ class ReKISDataModule(lightning.LightningDataModule):
 
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.trainset, batch_size=self.batch_size, shuffle=True, num_workers=16)
+        return torch.utils.data.DataLoader(self.trainset, batch_size=self.batch_size, shuffle=True, num_workers=8)
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.valset, batch_size=self.batch_size, num_workers=16)
+        return torch.utils.data.DataLoader(self.valset, batch_size=self.batch_size, num_workers=8)
