@@ -5,10 +5,7 @@ import rasterio
 import torch
 import xarray
 
-
-# TODO verify with experiments
 RESAMPLING = rasterio.enums.Resampling.cubic_spline
-
 
 class ReKIS(torch.utils.data.Dataset):
     def __init__(self, Y):
@@ -32,23 +29,23 @@ class ReKIS(torch.utils.data.Dataset):
 
 
 class ReKISDataModule(lightning.LightningDataModule):
-    def __init__(self, batch_size, path):
+    def __init__(self, batch_size, path, sets_years):
         super().__init__()
         self.batch_size = batch_size
         self.path = path
+        self.sets_years = sets_years
 
     def setup(self, stage):
         variable = "TM"  # TODO
         Y = xarray.open_mfdataset(self.path + variable + "/*.nc", decode_coords="all")
         Y = Y[variable]
-        self.trainset = ReKIS(Y.sel(time=slice("1961", "1992")))
-        self.valset = ReKIS(Y.sel(time=slice("1993", "2002")))
-        self.testset = ReKIS(Y.sel(time=slice("2003", "2012")))
+        self.trainset = ReKIS(Y.sel(time=slice(self.sets_years[0], self.sets_years[1])))
+        self.valset = ReKIS(Y.sel(time=slice(self.sets_years[2], self.sets_years[3])))
+        self.testset = ReKIS(Y.sel(time=slice(self.sets_years[4], self.sets_years[5])))
+
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.trainset, batch_size=self.batch_size, shuffle=True, num_workers=16
-        )
+        return torch.utils.data.DataLoader(self.trainset, batch_size=self.batch_size, shuffle=True, num_workers=16)
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.valset, batch_size=self.batch_size, num_workers=16)
