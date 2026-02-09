@@ -38,7 +38,6 @@
   - elapsed time: 8.9h
   - batch size: 32
   - epochs: 44
-> TODO: Maybe too long, try to increase #GPU
 - training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_1**.
 
 ## 🏆 Result
@@ -52,8 +51,7 @@ measured MAE only on pixels, where the observation stations are located.
 
 ## 👩‍💻 Future work
 - [ ] try minimalizing MSE and RMSE
-- [ ] try soft constraining the conservation laws
-- [ ] increase the speed of training
+- [X] try soft constraining the conservation laws
 - [ ] standardization and converting to K
 
 ## 📚 Bibliography
