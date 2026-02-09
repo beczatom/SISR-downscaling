@@ -1,1 +1,4 @@
+#!/bin/bash
+
+# modify the config file for other experiment
 python train/train.py fit --config config/config2.yaml
