@@ -1,5 +1,7 @@
 # 🔬 Experiment: Standard EDSR
 
+---
+
 ## ⚛️ Model
 - EDSR [1] (src/models/edsr/EDSR)
   - 1 input channel
@@ -26,6 +28,8 @@
 ## 🚀 Optimizer
 - Adam with learning rate 1e-4.
 
+---
+
 ## 🏋️‍♂️ Training
 - RCI
   - partition: gpu
@@ -40,6 +44,8 @@
   - epochs: 44
 - training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_1**.
 
+---
+
 ## 🏆 Result
 - lowest validation MAE: 0.03409
 - a little bit less than EDSR and slightly more than SwinIR in [2], but Košťál et al. minimalized climate variables and 
@@ -49,10 +55,14 @@ measured MAE only on pixels, where the observation stations are located.
 - this experiment differs from [2] by not using climate variables, we only minimize the pixel-wise MAE loss function.
 - this is the base model, we need in this work to improve
 
+---
+
 ## 👩‍💻 Future work
 - [ ] try minimalizing MSE and RMSE
 - [X] try soft constraining the conservation laws
 - [ ] standardization and converting to K
+
+---
 
 ## 📚 Bibliography
 1. https://github.com/sanghyun-son/EDSR-PyTorch/tree/master

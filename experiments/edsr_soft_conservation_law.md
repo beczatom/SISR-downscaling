@@ -1,5 +1,7 @@
 # 🔬 Experiment: EDSR conservation soft constraint
 
+---
+
 ## ⚛️ Model
 - EDSR [1] (src/models/edsr/EDSR)
   - 1 input channel
@@ -43,6 +45,8 @@ $$
 ## 🚀 Optimizer
 - Adam with learning rate 1e-4.
 
+---
+
 ## 🏋️‍♂️ Training
 - RCI
   - partition: gpu
@@ -57,6 +61,8 @@ $$
   - epochs: 56
 - training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_2**.
 
+---
+
 ## 🏆 Result
 - lowest validation MAE: 0.02926
 - a little bit less than standard EDSR (0.03409) (experiments/standard_edsr.md)
@@ -65,11 +71,15 @@ $$
 - the loss function was slightly more noisy than in standard EDSR training
 - slightly better validation MAE can suggest that this law is helpful, but we need to try more $\alpha$s 
 
+---
+
 ## 👩‍💻 Future work
 - [ ] for conservation loss try MSE
 - [ ] for loss try other $\alpha$s
 - [ ] try hard constraining the conservation laws
 - [ ] try other soft constraints
+
+---
 
 ## 📚 Bibliography
 1. https://github.com/sanghyun-son/EDSR-PyTorch/tree/master
