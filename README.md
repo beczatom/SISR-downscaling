@@ -28,6 +28,11 @@ pip install -e .
 sbatch rci_job.txt
 ```
 
+## View logs
+```bash
+tensorboard --logdir logs/lightning_logs
+```
+
 ---
 
 ## 🏗️ Project structure
