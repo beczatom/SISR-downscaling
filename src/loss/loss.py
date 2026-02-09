@@ -44,6 +44,49 @@ class ConservationLoss(torch.nn.Module):
         return (upscaled - x).abs().mean()
 
 
+
+class ContinuityLoss(torch.nn.Module):
+    """
+    Implements the continuity loss function.
+    Measures the difference between the model output gradient and the target gradient.
+    """
+    def __init__(self):
+        """
+        Initializes the continuity loss.
+        """
+        super().__init__()
+
+        # x derivation kernel
+        x_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 1, 2))
+        self.register_buffer('x_kernel', x_kernel)
+
+        # y derivation kernel
+        y_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
+        self.register_buffer('y_kernel', y_kernel)
+
+    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the continuity loss.
+        Args:
+            y_hat:  output image
+            y:      target image
+
+        Returns:
+            loss
+        """
+        y_hat_x_cont = torch.conv2d(y_hat, self.x_kernel, padding=0)
+        y_x_cont = torch.conv2d(y, self.x_kernel, padding=0)
+
+        y_hat_y_cont = torch.conv2d(y_hat, self.y_kernel, padding=0)
+        y_y_cont = torch.conv2d(y, self.y_kernel, padding=0)
+
+        # MAE of x-derivation and y-derivation
+        loss = (y_hat_x_cont - y_x_cont).abs().mean() + (y_hat_y_cont - y_y_cont).abs().mean()
+        return loss
+
+
 class LossCombination(torch.nn.Module):
     """
     Loss Combination is a loss function, that is a linear combination of some supported loss functions.
@@ -68,6 +111,7 @@ class LossCombination(torch.nn.Module):
         self.mse = torch.nn.MSELoss()
         self.mae = torch.nn.L1Loss()
         self.conservation = ConservationLoss(scale_factor)
+        self.continuity = ContinuityLoss()
 
     def forward(self, y_hat: torch.Tensor, y: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
         """
@@ -92,5 +136,8 @@ class LossCombination(torch.nn.Module):
 
         if "conservation" in self.weights.keys():
             loss += self.weights["conservation"] * self.conservation(y_hat, x)
+
+        if "continuity" in self.weights.keys():
+            loss += self.weights["continuity"] * self.continuity(y_hat, y)
 
         return loss
