@@ -1,1 +1,1 @@
-python train/train.py fit --config config/config.yaml
+python train/train.py fit --config config/config2.yaml
