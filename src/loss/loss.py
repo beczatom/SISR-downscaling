@@ -367,7 +367,7 @@ class LossCombination(torch.nn.Module):
         self.continuity = ContinuityLoss()
         self.sobel_gradient = SobelGradientLoss()
         self.gloss = GLoss(scale_factor)
-        self.vgl = GradientVarianceLoss(scale_factor)
+        self.gvl = GradientVarianceLoss(scale_factor)
 
     def forward(self, y_hat: torch.Tensor, y: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
         """
@@ -405,7 +405,7 @@ class LossCombination(torch.nn.Module):
         if "gloss" in self.weights.keys():
             loss += self.weights["gloss"] * self.gloss(y_hat, y)
 
-        if "vgl" in self.weights.keys():
-            loss += self.weights["vgl"] * self.vgl(y_hat, y)
+        if "gvl" in self.weights.keys():
+            loss += self.weights["gvl"] * self.gvl(y_hat, y)
 
         return loss
