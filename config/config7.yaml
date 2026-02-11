@@ -9,7 +9,7 @@ model:
     loss:
       class_path: loss.LossCombination
       init_args:
-        weights: {mae : 0.99, vgl : 0.01}
+        weights: {mae : 0.99, gvl : 0.01}
         scale_factor: 10
 
 data:
