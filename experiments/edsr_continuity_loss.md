@@ -1,4 +1,4 @@
-# 🔬 Experiment: EDSR simple gradient loss
+# 🔬 Experiment: EDSR continuity loss
 
 ---
 
@@ -18,19 +18,19 @@
 
 ## 📉 Loss function
 - Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
-- Simple gradient loss (src/loss/loss/SimpleGradientLoss).
+- Continuity loss (src/loss/loss/ContinuitytLoss) was added [4].
 - Simple "derivation of x" was calculated by convolution with kernel $\begin{bmatrix} 1 & -1\end{bmatrix}$.
-Similarly, "derivation of y" with kernel $\begin{bmatrix} 1 \\ -1\end{bmatrix}$.
-- Then the derivations of $I^\text{HR}$ and $\hat{I}^\text{HR}$ are:
+- Similarly, "derivation of y" with kernel $\begin{bmatrix} 1 \\ -1\end{bmatrix}$.
+- Then the derivations of $I^\text{HR}$ and $I^\text{SR}$ are:
 $$
-D_x = I^\text{HR} \star \begin{bmatrix} 1 & -1\end{bmatrix} \qquad \hat{D}_x = \hat{I}^\text{HR} \star \begin{bmatrix} 1 & -1\end{bmatrix}
+D^\text{HR}_x = I^\text{HR} \star \begin{bmatrix} 1 & -1\end{bmatrix} \qquad D^\text{SR}_x = I^\text{SR} \star \begin{bmatrix} 1 & -1\end{bmatrix}
 $$
 $$
-D_y = I^\text{HR} \star \begin{bmatrix} 1 \\ -1\end{bmatrix} \qquad \hat{D}_y = \hat{I}^\text{HR} \star \begin{bmatrix} 1 \\ -1\end{bmatrix}
+D^\text{HR}_y = I^\text{HR} \star \begin{bmatrix} 1 \\ -1\end{bmatrix} \qquad D^\text{SR}_y = I^\text{SR} \star \begin{bmatrix} 1 \\ -1\end{bmatrix}
 $$
-- Then the simple gradient loss function will be:
+- Then the continuity loss function will be:
 $$
-\mathcal{L}_D = MAE(D_x, \hat{D}_x) + MAE(D_y, \hat{D}_y)
+\mathcal{L}_D = \frac{1}{N}\sum \left| D^\text{SR}_x \right| + \frac{1}{N}\sum \left| D^\text{SR}_y \right| - \frac{1}{N}\sum \left| D^\text{HR}_x \right| - \frac{1}{N}\sum \left| D^\text{HR}_y \right|
 $$
 > TODO: try MSE
 - Therefore, the final loss function is:
@@ -58,25 +58,23 @@ $$
   - 8 CPU cores
   - 8 dataloader workers
   - 32 GB RAM
-  - elapsed time: 7.8h
+  - elapsed time: 8.5h
   - batch size: 32
-  - epochs: 38
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_3**.
+  - epochs: 42
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_4**.
 
 ---
 
 ## 🏆 Result
-- lowest validation MAE: 0.03436
-- almost same as standard EDSR (0.03409) (experiments/standard_edsr.md)
+- lowest validation MAE: 0.03024
 
 ## 📝 Notes
-- the loss function was slightly more noisy than in standard EDSR training
 - slightly better validation MAE can suggest that this law is helpful, but we need to try more $\alpha$s 
 
 ---
 
 ## 👩‍💻 Future work
-- [ ] for simple gradient loss try MSE
+- [ ] for continuity loss try MSE
 - [ ] for loss try other $\alpha$s
 - [ ] try other soft constraints
 
@@ -88,3 +86,5 @@ $$
 Single-Image Super Resolution'. Paper presented at NeurIPS 2025 Workshop on Tackling Climate Change
 with Machine Learning. Climate Change AI, December7. https://www.climatechange.ai/papers/neurips2025/86.
 3. Lim et al. (2017)
+4. Xiong, M. Q., 2025: Impact of physical constraints on deep learning-based downscaling prediction of temperature.
+J. Meteor. Res., 39(4), 904–919, https://doi.org/10.1007/s13351-025-4061-1.
