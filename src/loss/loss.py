@@ -249,8 +249,79 @@ class GLoss(torch.nn.Module):
         return loss
 
 
+# Abrahamyan. 2022. Gradient Variance Loss for Structure-Enhanced Image Super-Resolution.
+# ICASSP 2022 - 2022 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP).
+# https://doi.org/10.1109/ICASSP43922.2022.9747387.
+class GradientVarianceLoss(torch.nn.Module):
+    """
+    Implements the gradient variance loss function (GVL).
+    Measures the difference between the variance of patches of model output gradient and target gradient.
+    We use Sobel operator to calculate the gradient.
+    """
+    def __init__(self, scale_factor: int):
+        """
+        Initializes the GVL.
+        """
+        super().__init__()
+
+        self.scale_factor = scale_factor
+
+        # x derivation kernel
+        x_kernel = torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 3, 3))
+        self.register_buffer('x_kernel', x_kernel)
+
+        # y derivation kernel
+        y_kernel = torch.tensor([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 3, 3))
+        self.register_buffer('y_kernel', y_kernel)
+
+        self.unfold = torch.nn.Unfold(kernel_size=self.scale_factor, padding=0, stride=self.scale_factor)
+
+
+    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the GVL.
+        Args:
+            y_hat:  output image
+            y:      target image
+
+        Returns:
+            loss
+        """
+
+        # added padding
+        y_hat_p = torch.nn.functional.pad(y_hat, pad=(1, 1, 1, 1), mode='replicate')
+        y_p = torch.nn.functional.pad(y, pad=(1, 1, 1, 1), mode='replicate')
+
+        # sobel kernels
+        y_hat_dx = torch.conv2d(y_hat_p, self.x_kernel)
+        y_dx = torch.conv2d(y_p, self.x_kernel)
+
+        y_hat_dy = torch.conv2d(y_hat_p, self.y_kernel)
+        y_dy = torch.conv2d(y_p, self.y_kernel)
+
+
+        # unfold into patches
+        G_x = self.unfold(y_dx)
+        G_y = self.unfold(y_dy)
+
+        G_hat_x = self.unfold(y_hat_dx)
+        G_hat_y = self.unfold(y_hat_dy)
+
+        # calculate variance in patches
+        v_x = torch.var(G_x, dim = 1, unbiased=True)
+        v_y = torch.var(G_y, dim = 1, unbiased=True)
+
+        v_hat_x = torch.var(G_hat_x, dim = 1, unbiased=True)
+        v_hat_y = torch.var(G_hat_y, dim = 1, unbiased=True)
+
+        # obtain final loss
+        loss = (v_hat_x - v_x).abs().mean() + (v_hat_y - v_y).abs().mean()
+        return loss
+
 # if __name__ == '__main__':
-#     sgl = GLoss(scale_factor=2)
+#     sgl = GradientVarianceLoss(scale_factor=3)
 #     y = torch.tensor([[[[0., 0., 0., 0., 0., 0.],
 #           [1., 1., 0., 1., 1., 0.],
 #           [0., 1., 1., 0., 0., 0.],
@@ -266,11 +337,7 @@ class GLoss(torch.nn.Module):
 #
 #     print(y)
 #     print(y_hat)
-#     # y = torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]], dtype=torch.float32).reshape((1, 1, 4, 4))
-#     # y_hat = torch.tensor([[1, 2, 1, 2], [4, 3, 4, 3], [1, 2, 1, 2], [4, 3, 4, 3]], dtype=torch.float32).reshape((1, 1, 4, 4))
 #     loss = sgl.forward(y_hat, y)
-#     print(loss)
-
 
 class LossCombination(torch.nn.Module):
     """
@@ -300,6 +367,7 @@ class LossCombination(torch.nn.Module):
         self.continuity = ContinuityLoss()
         self.sobel_gradient = SobelGradientLoss()
         self.gloss = GLoss(scale_factor)
+        self.vgl = GradientVarianceLoss(scale_factor)
 
     def forward(self, y_hat: torch.Tensor, y: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
         """
@@ -336,5 +404,8 @@ class LossCombination(torch.nn.Module):
 
         if "gloss" in self.weights.keys():
             loss += self.weights["gloss"] * self.gloss(y_hat, y)
+
+        if "vgl" in self.weights.keys():
+            loss += self.weights["vgl"] * self.vgl(y_hat, y)
 
         return loss
