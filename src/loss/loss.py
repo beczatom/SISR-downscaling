@@ -320,24 +320,96 @@ class GradientVarianceLoss(torch.nn.Module):
         loss = (v_hat_x - v_x).abs().mean() + (v_hat_y - v_y).abs().mean()
         return loss
 
+
+
+# Inspired by : Xiong, M. Q., 2025: Impact of physical constraints on deep learning-based downscaling prediction of temperature.
+# J. Meteor. Res., 39(4), 904–919, https://doi.org/10.1007/s13351-025-4061-1.
+# Xiong et al. used the atan2s on output image.
+# But that does NOT capture the gradient orientation.
+# Example: suppose we have an image [[1, 1], [1, 1]], a flat space, where gradient is 0 everywhere and the orientation
+# should also be 0. But with applying atan2 on the image shifted by one to right, we get atan2(1, 1) != 0.
+# Moreover, the atan2 is not the best to later measure difference between these values,
+# (179 and -179 degrees are close, but the difference is large).
+# So we will use cosine_similarity on gradient.
+class DirectionContinuityLoss(torch.nn.Module):
+    """
+    Implements the direction continuity gradient loss function.
+    Measures the difference between the orientation of gradient.
+    """
+    def __init__(self):
+        """
+        Initializes the orientation continuity loss function.
+        """
+        super().__init__()
+
+        # x derivation kernel
+        x_kernel = torch.tensor([-1, 1], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 1, 2))
+        self.register_buffer('x_kernel', x_kernel)
+
+        # y derivation kernel
+        y_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
+        self.register_buffer('y_kernel', y_kernel)
+
+
+    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the orientation continuity gradient loss.
+        Args:
+            y_hat:  output image
+            y:      target image
+
+        Returns:
+            loss
+        """
+
+        # x derivation and dropping the last row to match sizes with y derivation
+        y_hat_dx = torch.conv2d(y_hat, self.x_kernel, padding=0)
+        y_dx = torch.conv2d(y, self.x_kernel, padding=0)
+        y_hat_dx = y_hat_dx[:, :, :-1, :]
+        y_dx = y_dx[:, :, :-1, :]
+
+        # y derivation and dropping the last column to match sizes with x derivation
+        y_hat_dy = torch.conv2d(y_hat, self.y_kernel, padding=0)
+        y_dy = torch.conv2d(y, self.y_kernel, padding=0)
+        y_hat_dy = y_hat_dy[:, :, :, :-1]
+        y_dy = y_dy[:, :, :, :-1]
+
+        # cosine similarity
+        g_y_hat_xy = torch.stack([y_hat_dx, y_hat_dy], dim=1)
+        g_y_xy = torch.stack([y_dx, y_dy], dim=1)
+        sim = torch.cosine_similarity(g_y_hat_xy, g_y_xy, dim=1)
+
+        loss = (1 - sim).abs().mean()
+        return loss
+
+
 # if __name__ == '__main__':
-#     sgl = GradientVarianceLoss(scale_factor=3)
-#     y = torch.tensor([[[[0., 0., 0., 0., 0., 0.],
-#           [1., 1., 0., 1., 1., 0.],
-#           [0., 1., 1., 0., 0., 0.],
-#           [0., 1., 1., 1., 1., 0.],
-#           [0., 1., 1., 1., 0., 1.],
-#           [1., 1., 1., 0., 0., 0.]]]]).float()
-#     y_hat = torch.tensor([[[[0., 1., 1., 1., 1., 1.],
-#           [0., 0., 1., 1., 1., 0.],
-#           [1., 0., 0., 1., 1., 1.],
-#           [1., 1., 1., 0., 0., 0.],
-#           [0., 1., 1., 1., 0., 0.],
-#           [0., 0., 1., 1., 0., 1.]]]]).float()
+#     # sgl = GradientVarianceLoss(scale_factor=3)
+#     # y = torch.tensor([[[[0., 0., 0., 0., 0., 0.],
+#     #       [1., 1., 0., 1., 1., 0.],
+#     #       [0., 1., 1., 0., 0., 0.],
+#     #       [0., 1., 1., 1., 1., 0.],
+#     #       [0., 1., 1., 1., 0., 1.],
+#     #       [1., 1., 1., 0., 0., 0.]]]]).float()
+#     # y_hat = torch.tensor([[[[0., 1., 1., 1., 1., 1.],
+#     #       [0., 0., 1., 1., 1., 0.],
+#     #       [1., 0., 0., 1., 1., 1.],
+#     #       [1., 1., 1., 0., 0., 0.],
+#     #       [0., 1., 1., 1., 0., 0.],
+#     #       [0., 0., 1., 1., 0., 1.]]]]).float()
 #
-#     print(y)
-#     print(y_hat)
-#     loss = sgl.forward(y_hat, y)
+#     dcloss = DirectionContinuityLoss()
+#
+#     y = torch.tensor([[[[2, 4, 6], [8, 10, 12], [14, 16, 18]]], [[[2, 4, 6], [8, 10, 12], [14, 16, 18]]]]).float()
+#     y_hat = torch.tensor([[[[2, 4, 5], [8, 10, 12], [14, 16, 18]]], [[[2, 4, 6], [8, 10, 12], [14, 16, 18]]]]).float()
+#
+#     print(dcloss(y, y_hat))
+#     # print(y)
+#     # print(y_hat)
+#     # loss = sgl.forward(y_hat, y)
+
 
 class LossCombination(torch.nn.Module):
     """
@@ -368,6 +440,7 @@ class LossCombination(torch.nn.Module):
         self.sobel_gradient = SobelGradientLoss()
         self.gloss = GLoss(scale_factor)
         self.gvl = GradientVarianceLoss(scale_factor)
+        self.dcl = DirectionContinuityLoss()
 
     def forward(self, y_hat: torch.Tensor, y: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
         """
@@ -407,5 +480,8 @@ class LossCombination(torch.nn.Module):
 
         if "gvl" in self.weights.keys():
             loss += self.weights["gvl"] * self.gvl(y_hat, y)
+
+        if "dcl" in self.weights.keys():
+            loss += self.weights["dcl"] * self.dcl(y_hat, y)
 
         return loss
