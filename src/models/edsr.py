@@ -111,4 +111,4 @@ class EDSR(AbstractModel):
 
     def configure_optimizers(self):
         """Set up the optimizer for the EDSR model."""
-        return torch.optim.Adam(self.parameters(), lr=1e-4)
+        return torch.optim.Adam(self.parameters(), lr=1e-4, weight_decay=1e-5)
