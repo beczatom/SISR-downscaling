@@ -1,7 +1,7 @@
 """
 Based on: Ondřej Podsztavek
 Source: https://github.com/podondra/downscaling/
-Minor changes were added.
+Optimizer scheduler was added.
 """
 
 import torch
@@ -111,4 +111,11 @@ class EDSR(AbstractModel):
 
     def configure_optimizers(self):
         """Set up the optimizer for the EDSR model."""
-        return torch.optim.Adam(self.parameters(), lr=1e-4, weight_decay=1e-5)
+        return {
+            "optimizer": self.hparams.optimizer,
+            "lr_scheduler": {
+                "scheduler": self.hparams.lr_scheduler,
+                "interval": "epoch",
+                "frequency": 1
+            }
+        }
