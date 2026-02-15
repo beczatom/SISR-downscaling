@@ -108,14 +108,3 @@ class EDSR(AbstractModel):
         residue += x
         x = self.tail(residue)
         return x
-
-    def configure_optimizers(self):
-        """Set up the optimizer for the EDSR model."""
-        return {
-            "optimizer": self.hparams.optimizer,
-            "lr_scheduler": {
-                "scheduler": self.hparams.lr_scheduler,
-                "interval": "epoch",
-                "frequency": 1
-            }
-        }
