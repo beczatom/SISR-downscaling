@@ -376,12 +376,15 @@ class DirectionContinuityLoss(torch.nn.Module):
         y_hat_dy = y_hat_dy[:, :, :, :-1]
         y_dy = y_dy[:, :, :, :-1]
 
-        # cosine similarity
+        # cosine similarity, scaling with magnitude, we don't want to punish large differences in angles
+        # when the gradient magnitude is close to zero
         g_y_hat_xy = torch.stack([y_hat_dx, y_hat_dy], dim=1)
+
         g_y_xy = torch.stack([y_dx, y_dy], dim=1)
+
         sim = torch.cosine_similarity(g_y_hat_xy, g_y_xy, dim=1)
 
-        loss = (1 - sim).abs().mean()
+        loss = ((1 - sim) * (y_dx.pow(2) + y_dy.pow(2)).sqrt()).abs().mean()
         return loss
 
 
