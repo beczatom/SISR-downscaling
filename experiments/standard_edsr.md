@@ -47,6 +47,13 @@
 ---
 
 ## 🏆 Result
+
+| #experiment | lowest validation MAE | lowest validation RMSE | model; patience         |
+|:------------|:----------------------|:-----------------------|:------------------------|
+| 1           | 0.03409               | 0.04519                | EDSR, f:256, rb: 32; 10 |
+| 10          | 0.02552               | 0.03076                | EDSR, f:128, rb: 64; 20 |
+
+
 - lowest validation MAE: 0.03409
 - a little bit less than EDSR and slightly more than SwinIR in [2], but Košťál et al. minimalized climate variables and 
 measured MAE only on pixels, where the observation stations are located.
@@ -61,6 +68,8 @@ measured MAE only on pixels, where the observation stations are located.
 - [ ] try minimalizing MSE and RMSE
 - [X] try soft constraining the conservation laws
 - [ ] standardization and converting to K
+- [X] try the best EDSR architecture from Košťál et al. [2]
+- [ ] stabilize the learning for the EDSR f: 128, rb: 64
 
 ---
 
