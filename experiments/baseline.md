@@ -1,4 +1,4 @@
-# 🔬 Experiment: Standard EDSR
+# 🔬 Experiment: Baseline model
 
 ---
 
@@ -6,8 +6,6 @@
 - EDSR [1] (src/models/edsr/EDSR)
   - 1 input channel
   - scale factor 10
-  - 256 features (channels)
-  - 32 residual blocks
   - the same architecture as Košťál et al. [2].
 
 ## 🗂️ Data
@@ -42,17 +40,16 @@
   - elapsed time: 8.9h
   - batch size: 32
   - epochs: 44
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_1**.
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{1, 10}**.
 
 ---
 
 ## 🏆 Result
 
-| #experiment | lowest validation MAE | lowest validation RMSE | model; patience         |
-|:------------|:----------------------|:-----------------------|:------------------------|
-| 1           | 0.03409               | 0.04519                | EDSR, f:256, rb: 32; 10 |
-| 10          | 0.02552               | 0.03076                | EDSR, f:128, rb: 64; 20 |
-
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
+| 1           | -        | 0.03409               | 0.04519                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | baseline                     | [2]     |
+| 10          | -        | 0.02552               | 0.03076                | EDSR, f:128, rb: 64 | 20       | 1e-4 | -      | 1e-5 | baseline                     | [2]     |
 
 - lowest validation MAE: 0.03409
 - a little bit less than EDSR and slightly more than SwinIR in [2], but Košťál et al. minimalized climate variables and 
@@ -60,22 +57,22 @@ measured MAE only on pixels, where the observation stations are located.
 
 ## 📝 Notes
 - this experiment differs from [2] by not using climate variables, we only minimize the pixel-wise MAE loss function.
-- this is the base model, we need in this work to improve
+- this is the baseline model, we need in this work to improve
 
 ---
 
 ## 👩‍💻 Future work
 - [ ] try minimalizing MSE and RMSE
 - [X] try soft constraining the conservation laws
-- [ ] standardization and converting to K
+- [ ] standardization and converting to K ??
 - [X] try the best EDSR architecture from Košťál et al. [2]
-- [ ] stabilize the learning for the EDSR f: 128, rb: 64
+- [ ] stabilize the learning for the EDSR f: 128, rb: 64 (StepLR 0.5 is too aggressive)
 
 ---
 
 ## 📚 Bibliography
 1. https://github.com/sanghyun-son/EDSR-PyTorch/tree/master
-2. Košťál, Petr, Pavel Kordík, and Ondřej Podsztavek. 2025. 'Downscaling Climate Projections to 1 Km with
-Single-Image Super Resolution'. Paper presented at NeurIPS 2025 Workshop on Tackling Climate Change
-with Machine Learning. Climate Change AI, December7.https://www.climatechange.ai/papers/neurips2025/86.
+2. KOŠŤÁL, Petr; KORDÍK, Pavel; PODSZTAVEK, Ondřej. Downscaling
+climate projections to 1 km with single-image super resolution. 2025. 
+Available from arXiv: 2509.21399 [cs.CV].
 3. Lim et al. (2017)

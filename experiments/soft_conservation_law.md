@@ -6,8 +6,6 @@
 - EDSR [1] (src/models/edsr/EDSR)
   - 1 input channel
   - scale factor 10
-  - 256 features (channels)
-  - 32 residual blocks
   - the same architecture as Košťál et al. [2].
 
 ## 🗂️ Data
@@ -59,11 +57,17 @@ $$
   - elapsed time: 11.3h
   - batch size: 32
   - epochs: 56
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_2**.
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{2, 12}**.
 
 ---
 
 ## 🏆 Result
+
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
+| 2           | 0.01     | 0.02926               | 0.03757                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | soft conservation law        | [2]     |
+| 12 (2B)     | 0.01     | 0.02564               | 0.03152                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                              |         |
+
 - lowest validation MAE: 0.02926
 - a little bit less than standard EDSR (0.03409) (experiments/standard_edsr.md)
 
@@ -83,9 +87,12 @@ $$
 
 ## 📚 Bibliography
 1. https://github.com/sanghyun-son/EDSR-PyTorch/tree/master
-2. Košťál, Petr, Pavel Kordík, and Ondřej Podsztavek. 2025. 'Downscaling Climate Projections to 1 Km with
-Single-Image Super Resolution'. Paper presented at NeurIPS 2025 Workshop on Tackling Climate Change
-with Machine Learning. Climate Change AI, December7. https://www.climatechange.ai/papers/neurips2025/86.
+2. KOŠŤÁL, Petr; KORDÍK, Pavel; PODSZTAVEK, Ondřej. Downscaling
+climate projections to 1 km with single-image super resolution. 2025. 
+Available from arXiv: 2509.21399 [cs.CV].
 3. Lim et al. (2017)
-4. Harder, Paula, Alex Hernandez-Garcia, Venkatesh Ramesh et al. 2023. 'Hard-Constrained Deep Learning for Climate 
-Downscaling'. Journal of Machine Learning Research. http://jmlr.org/papers/v24/23-0158.html
+4. HARDER, Paula; HERNANDEZ-GARCIA, Alex; RAMESH, Venkatesh;
+YANG, Qidong; SATTIGERI, Prasanna; SZWARCMAN, Daniela; WATSON, Campbell; 
+ROLNICK, David. Hard-Constrained Deep Learning for
+Climate Downscaling. 2024. Available from arXiv: 2208.05424 [physics.ao-
+ph].

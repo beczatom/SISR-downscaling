@@ -6,8 +6,6 @@
 - EDSR [1] (src/models/edsr/EDSR)
   - 1 input channel
   - scale factor 10
-  - 256 features (channels)
-  - 32 residual blocks
   - the same architecture as Košťál et al. [2].
 
 ## 🗂️ Data
@@ -19,7 +17,7 @@
 ## 📉 Loss function
 - Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
 - G-Loss (src/loss/loss/GLoss) was added [4].
-- Derivations are calculated in all the 8 directions:
+- Derivatives are calculated in all the 8 directions:
 $$
 C_G = \left\{ 
 \begin{bmatrix} -1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 0\end{bmatrix},
@@ -41,7 +39,7 @@ $$
 $$
 I^\text{HR}_\text{U} = \text{PixelUnshuffle}(I^\text{HR}, n) \qquad I^\text{SR}_\text{U} = \text{PixelUnshuffle}(I^\text{SR}, n)
 $$
-- Then apply convolution with the derivation kernels on the unshuffled patches.
+- Then apply convolution with the derivative kernels on the unshuffled patches.
 $$
 G^\text{HR} = I^\text{HR}_\text{U} \star C_G \qquad G^\text{SR} = I^\text{SR}_\text{U} \star C_G
 $$
@@ -80,12 +78,20 @@ $$
   - elapsed time: 10.4h
   - batch size: 32
   - epochs: 51
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_6**.
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{6, 16}**.
 
 ---
 
 ## 🏆 Result
-- lowest validation MAE: 0.03259
+
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
+| 6           | 0.01     | 0.03259               | 0.04231                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | G-Loss                       | [5]     |
+| 16 (6B)     | 0.01     | 0.02562               | 0.03146                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                              |         |
+
+
+## 📝 Notes
+- this is not a soft constraint, as defined by Harder et al. [5], because it depends on HR
 
 ---
 
@@ -97,9 +103,14 @@ $$
 
 ## 📚 Bibliography
 1. https://github.com/sanghyun-son/EDSR-PyTorch/tree/master
-2. Košťál, Petr, Pavel Kordík, and Ondřej Podsztavek. 2025. 'Downscaling Climate Projections to 1 Km with
-Single-Image Super Resolution'. Paper presented at NeurIPS 2025 Workshop on Tackling Climate Change
-with Machine Learning. Climate Change AI, December7. https://www.climatechange.ai/papers/neurips2025/86.
+2. KOŠŤÁL, Petr; KORDÍK, Pavel; PODSZTAVEK, Ondřej. Downscaling
+climate projections to 1 km with single-image super resolution. 2025. 
+Available from arXiv: 2509.21399 [cs.CV].
 3. Lim et al. (2017)
 4. Lei Ge, Lei Dou. 2023. G-Loss: A loss function with gradient information for super-resolution.
 Optik - International Journal for Light and Electron Optics. https://doi.org/10.1016/j.ijleo.2023.170750.
+5. HARDER, Paula; HERNANDEZ-GARCIA, Alex; RAMESH, Venkatesh;
+YANG, Qidong; SATTIGERI, Prasanna; SZWARCMAN, Daniela; WATSON, Campbell; 
+ROLNICK, David. Hard-Constrained Deep Learning for
+Climate Downscaling. 2024. Available from arXiv: 2208.05424 [physics.ao-
+ph].

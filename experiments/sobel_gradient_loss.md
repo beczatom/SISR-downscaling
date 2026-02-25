@@ -6,8 +6,6 @@
 - EDSR [1] (src/models/edsr/EDSR)
   - 1 input channel
   - scale factor 10
-  - 256 features (channels)
-  - 32 residual blocks
   - the same architecture as Košťál et al. [2].
 
 ## 🗂️ Data
@@ -19,10 +17,10 @@
 ## 📉 Loss function
 - Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
 - Sobel gradient loss (src/loss/loss/SobelGradientLoss) was added [4].
-- Sobel "derivation of x" was calculated by convolution with kernel 
+- Sobel derivative with respect to x was calculated by convolution with kernel 
 $K_x = \begin{bmatrix} -1 & 0 & 1 \\ -2 & 0 & 2 \\ -1 & 0 & 1 \end{bmatrix}$
-- Similarly, "derivation of y" with kernel $K_y = \begin{bmatrix} -1 & -2 & -1 \\ 0 & 0 & 0 \\ 1 & 2 & 1 \end{bmatrix}$
-- Then the derivations of $I^\text{HR}$ and $I^\text{SR}$ are:
+- Similarly, derivative with respect to y with kernel $K_y = \begin{bmatrix} -1 & -2 & -1 \\ 0 & 0 & 0 \\ 1 & 2 & 1 \end{bmatrix}$
+- Then the derivatives of $I^\text{HR}$ and $I^\text{SR}$ are:
 $$
 D^\text{HR} = \sqrt{\left(I^\text{HR} \star K_x\right)^2 + \left(I^\text{HR} \star K_y\right)^2}
 $$
@@ -62,13 +60,23 @@ $$
   - elapsed time: 8.6h
   - batch size: 32
   - epochs: 42
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_5**.
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{5, 15}**.
 
 ---
 
 ## 🏆 Result
+
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
+| 5           | 0.01     | 0.03499               | 0.04786                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | Sobel gradient loss          | [4]     |
+| 15 (5B)     | 0.01     | -                     | -                      | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                              |         |
+
+
 - lowest validation MAE: 0.03499
 - almost same as standard EDSR (0.03409) (experiments/standard_edsr.md)
+
+## 📝 Notes
+- this is not a soft constraint, as defined by Harder et al. [5], because it depends on HR
 
 ---
 
@@ -81,9 +89,14 @@ $$
 
 ## 📚 Bibliography
 1. https://github.com/sanghyun-son/EDSR-PyTorch/tree/master
-2. Košťál, Petr, Pavel Kordík, and Ondřej Podsztavek. 2025. 'Downscaling Climate Projections to 1 Km with
-Single-Image Super Resolution'. Paper presented at NeurIPS 2025 Workshop on Tackling Climate Change
-with Machine Learning. Climate Change AI, December7. https://www.climatechange.ai/papers/neurips2025/86.
+2. KOŠŤÁL, Petr; KORDÍK, Pavel; PODSZTAVEK, Ondřej. Downscaling
+climate projections to 1 km with single-image super resolution. 2025. 
+Available from arXiv: 2509.21399 [cs.CV].
 3. Lim et al. (2017)
 4. Zhengyang Lu, Ying Chen. 2020. Single image super-resolution based on a modified U-net with mixed gradient loss.
 Signal, Image and Video Processing (2022). https://doi.org/10.1007/s11760-021-02063-5.
+5. HARDER, Paula; HERNANDEZ-GARCIA, Alex; RAMESH, Venkatesh;
+YANG, Qidong; SATTIGERI, Prasanna; SZWARCMAN, Daniela; WATSON, Campbell; 
+ROLNICK, David. Hard-Constrained Deep Learning for
+Climate Downscaling. 2024. Available from arXiv: 2208.05424 [physics.ao-
+ph].

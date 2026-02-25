@@ -6,8 +6,6 @@
 - EDSR [1] (src/models/edsr/EDSR)
   - 1 input channel
   - scale factor 10
-  - 256 features (channels)
-  - 32 residual blocks
   - the same architecture as Košťál et al. [2].
 
 ## 🗂️ Data
@@ -19,9 +17,9 @@
 ## 📉 Loss function
 - Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
 - Continuity loss (src/loss/loss/ContinuitytLoss) was added [4].
-- Simple "derivation of x" was calculated by convolution with kernel $\begin{bmatrix} 1 & -1\end{bmatrix}$.
-- Similarly, "derivation of y" with kernel $\begin{bmatrix} 1 \\ -1\end{bmatrix}$.
-- Then the derivations of $I^\text{HR}$ and $I^\text{SR}$ are:
+- Simple derivative with respect to x was calculated by convolution with kernel $\begin{bmatrix} 1 & -1\end{bmatrix}$.
+- Similarly, derivative with respect to y with kernel $\begin{bmatrix} 1 \\ -1\end{bmatrix}$.
+- Then the derivatives of $I^\text{HR}$ and $I^\text{SR}$ are:
 $$
 D^\text{HR}_x = I^\text{HR} \star \begin{bmatrix} 1 & -1\end{bmatrix} \qquad D^\text{SR}_x = I^\text{SR} \star \begin{bmatrix} 1 & -1\end{bmatrix}
 $$
@@ -61,15 +59,20 @@ $$
   - elapsed time: 8.5h
   - batch size: 32
   - epochs: 42
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_4**.
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{4, 14}**.
 
 ---
 
 ## 🏆 Result
-- lowest validation MAE: 0.03024
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
+| 4           | 0.01     | 0.03024               | 0.04044                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | continuity loss              | [3]     |
+| 14 (4B)     | 0.01     | 0.02563               | 0.03145                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                              |         |
+
 
 ## 📝 Notes
 - slightly better validation MAE can suggest that this law is helpful, but we need to try more $\alpha$s 
+- this is not a soft constraint, as defined by Harder et al. [5], because it depends on HR
 
 ---
 
@@ -82,9 +85,14 @@ $$
 
 ## 📚 Bibliography
 1. https://github.com/sanghyun-son/EDSR-PyTorch/tree/master
-2. Košťál, Petr, Pavel Kordík, and Ondřej Podsztavek. 2025. 'Downscaling Climate Projections to 1 Km with
-Single-Image Super Resolution'. Paper presented at NeurIPS 2025 Workshop on Tackling Climate Change
-with Machine Learning. Climate Change AI, December7. https://www.climatechange.ai/papers/neurips2025/86.
+2. KOŠŤÁL, Petr; KORDÍK, Pavel; PODSZTAVEK, Ondřej. Downscaling
+climate projections to 1 km with single-image super resolution. 2025. 
+Available from arXiv: 2509.21399 [cs.CV].
 3. Lim et al. (2017)
 4. Xiong, M. Q., 2025: Impact of physical constraints on deep learning-based downscaling prediction of temperature.
 J. Meteor. Res., 39(4), 904–919, https://doi.org/10.1007/s13351-025-4061-1.
+5. HARDER, Paula; HERNANDEZ-GARCIA, Alex; RAMESH, Venkatesh;
+YANG, Qidong; SATTIGERI, Prasanna; SZWARCMAN, Daniela; WATSON, Campbell; 
+ROLNICK, David. Hard-Constrained Deep Learning for
+Climate Downscaling. 2024. Available from arXiv: 2208.05424 [physics.ao-
+ph].
