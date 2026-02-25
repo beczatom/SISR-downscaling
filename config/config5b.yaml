@@ -21,7 +21,7 @@ lr_scheduler:
   class_path: torch.optim.lr_scheduler.StepLR
   init_args:
     step_size: 50
-    gamma: 0.5
+    gamma: 0.9
 
 data:
   class_path: datasets.ReKISDataModule
