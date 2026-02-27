@@ -1,5 +1,7 @@
 import torch
 
+EPS = 1e-8
+
 
 class ConservationLoss(torch.nn.Module):
     """
@@ -22,26 +24,24 @@ class ConservationLoss(torch.nn.Module):
         # will compute the means in downscaled LR pixels
         self.avg_pool = torch.nn.AvgPool2d(kernel_size=scale_factor, stride=scale_factor, padding=0)
 
-
-    def forward(self, y_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the conservation loss.
         Args:
-            y_hat:  downscaled image
-            x:      origin image
+            sr: downscaled image
+            lr: low resolution image
         Returns:
             loss
         """
-        # the output of convolution of tensor y_hat, with the average pool,
+        # the output of convolution of tensor sr, with the average pool,
         # will be the mean value in the scale_factor x scale_factor region
-        # then this "tensor of means" has the same size as the net input x,
+        # then this "tensor of means" has the same size as the net input lr,
         # and we want them to be the same, so we penalize the difference between them
-        means = self.avg_pool(y_hat)
+        means = self.avg_pool(sr)
 
-        # this corresponds to MAE(1/n \sum(y_hat), x)
+        # this corresponds to MAE(1/n \sum(sr), lr)
         # TODO try MSE, like Harder et al. section 5.3
-        return (means - x).abs().mean()
-
+        return (means - lr).abs().mean()
 
 
 class SimpleGradientLoss(torch.nn.Module):
@@ -50,6 +50,7 @@ class SimpleGradientLoss(torch.nn.Module):
     Measures the difference between the model output gradient and the target gradient.
     We use only primitive kernels to calculate the gradient.
     """
+
     def __init__(self):
         """
         Initializes the simple gradient loss.
@@ -66,24 +67,89 @@ class SimpleGradientLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the simple gradient loss.
         Args:
-            y_hat:  output image
-            y:      target image
+            sr: output image
+            hr: target image
 
         Returns:
             loss
         """
-        y_hat_dx = torch.conv2d(y_hat, self.x_kernel, padding=0)
-        y_dx = torch.conv2d(y, self.x_kernel, padding=0)
 
-        y_hat_dy = torch.conv2d(y_hat, self.y_kernel, padding=0)
-        y_dy = torch.conv2d(y, self.y_kernel, padding=0)
+        # SR and HR dx
+        sr_dx = torch.conv2d(sr, self.x_kernel, padding=0)
+        hr_dx = torch.conv2d(hr, self.x_kernel, padding=0)
+
+        # SR and HR dy
+        sr_dy = torch.conv2d(sr, self.y_kernel, padding=0)
+        hr_dy = torch.conv2d(hr, self.y_kernel, padding=0)
 
         # MAE of dx and dy
-        loss = (y_hat_dx - y_dx).abs().mean() + (y_hat_dy - y_dy).abs().mean()
+        loss = (sr_dx - hr_dx).abs().mean() + (sr_dy - hr_dy).abs().mean()
+        return loss
+
+
+class SoftSimpleGradientLoss(torch.nn.Module):
+    """
+    Modifies the Simple gradient loss function to match the definition of soft constraint.
+    """
+
+    def __init__(self, scale_factor: int):
+        """
+        Initializes the simple gradient loss.
+        """
+        super().__init__()
+
+        self.scale_factor = scale_factor
+        self.pixel_unshuffle = torch.nn.PixelUnshuffle(scale_factor)
+
+        # dx
+        x_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 1, 2))
+        self.register_buffer('x_kernel', x_kernel)
+
+        # dy
+        y_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
+        self.register_buffer('y_kernel', y_kernel)
+
+    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the simple gradient loss.
+        Args:
+            sr: downscaled image
+            lr: low resolution image
+
+        Returns:
+            loss
+        """
+
+        # SR unshuffle
+        u_sr = self.pixel_unshuffle(sr)
+        _, _, h, w = u_sr.shape
+
+        u_sr = u_sr.reshape(-1, 1, h, w)
+
+        # SR derivatives
+        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
+        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
+
+        # SR derivatives reshape
+        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h, w - 1)
+        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 1, w)
+
+        # SR mean derivatives
+        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
+        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
+
+        # HR derivatives
+        lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
+        lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
+
+        # MAE of dx and dy
+        loss = (mean_sr_dx - lr_dx).abs().mean() + (mean_sr_dy - lr_dy).abs().mean()
         return loss
 
 
@@ -95,6 +161,7 @@ class SobelGradientLoss(torch.nn.Module):
     Measures the difference between the model output gradient and the target gradient.
     We use Sobel operator to calculate the gradient.
     """
+
     def __init__(self):
         """
         Initializes the Sobel gradient loss.
@@ -111,30 +178,102 @@ class SobelGradientLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 3, 3))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the Sobel gradient loss.
         Args:
-            y_hat:  output image
-            y:      target image
+            sr: downscaled image
+            hr: target image
 
         Returns:
             loss
         """
 
-        y_hat_dx = torch.conv2d(y_hat, self.x_kernel, padding=0)
-        y_dx = torch.conv2d(y, self.x_kernel, padding=0)
+        # SR and HR dx
+        sr_dx = torch.conv2d(sr, self.x_kernel, padding=0)
+        hr_dx = torch.conv2d(hr, self.x_kernel, padding=0)
 
-        y_hat_dy = torch.conv2d(y_hat, self.y_kernel, padding=0)
-        y_dy = torch.conv2d(y, self.y_kernel, padding=0)
+        # SR and HR dy
+        sr_dy = torch.conv2d(sr, self.y_kernel, padding=0)
+        hr_dy = torch.conv2d(hr, self.y_kernel, padding=0)
 
-        eps = 1e-8
-        G = (y_dx.pow(2) + y_dy.pow(2) + eps).sqrt()
-        G_hat = (y_hat_dx.pow(2) + y_hat_dy.pow(2) + eps).sqrt()
+        # SR and HR gradient calculation
+        hr_grad = (hr_dx.pow(2) + hr_dy.pow(2) + EPS).sqrt()
+        sr_grad = (sr_dx.pow(2) + sr_dy.pow(2) + EPS).sqrt()
 
         # MAE of gradients
         # TODO try MSE
-        loss = (G - G_hat).abs().mean()
+        loss = (hr_grad - sr_grad).abs().mean()
+        return loss
+
+
+# Zhengyang Lu, Ying Chen. 2020. Single image super-resolution based on a modified U-net with mixed gradient loss.
+# Signal, Image and Video Processing (2022). https://doi.org/10.1007/s11760-021-02063-5.
+class SoftSobelGradientLoss(torch.nn.Module):
+    """
+    Modifies the Sobel gradient loss function to match the definition of soft constraint.
+    """
+
+    def __init__(self, scale_factor: int):
+        """
+        Initializes the Soft Sobel gradient loss.
+        """
+        super().__init__()
+
+        self.scale_factor = scale_factor
+
+        self.pixel_unshuffle = torch.nn.PixelUnshuffle(self.scale_factor)
+
+        # dx
+        x_kernel = torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 3, 3))
+        self.register_buffer('x_kernel', x_kernel)
+
+        # dy
+        y_kernel = torch.tensor([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 3, 3))
+        self.register_buffer('y_kernel', y_kernel)
+
+    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the soft Sobel gradient loss.
+        Args:
+            sr: downscaled image
+            lr: low resolution image
+
+        Returns:
+            loss
+        """
+
+        # SR unshuffle
+        u_sr = self.pixel_unshuffle(sr)
+        _, _, h, w = u_sr.shape
+
+        u_sr = u_sr.reshape(-1, 1, h, w)
+
+        # SR derivatives
+        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
+        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
+
+        # SR reshaping
+        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h - 2, w - 2)
+        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 2, w - 2)
+
+        # SR mean derivatives
+        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
+        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
+
+        # LR derivatives
+        lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
+        lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
+
+        # LR and SR gradient calculation
+        lr_grad = (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()
+        sr_grad = (mean_sr_dx.pow(2) + mean_sr_dy.pow(2) + EPS).sqrt()
+
+        # MAE of gradients
+        # TODO try MSE
+        loss = (lr_grad - sr_grad).abs().mean()
         return loss
 
 
@@ -142,13 +281,14 @@ class SobelGradientLoss(torch.nn.Module):
 # J. Meteor. Res., 39(4), 904–919, https://doi.org/10.1007/s13351-025-4061-1.
 class ContinuityLoss(torch.nn.Module):
     """
-    Implements the continuity gradient loss function.
+    Implements the continuity loss function.
     Measures the difference between the sum of model output gradient and the sum of target gradient.
     We use only primitive kernels to calculate the gradient.
     """
+
     def __init__(self):
         """
-        Initializes the simple gradient loss.
+        Initializes the continuity loss.
         """
         super().__init__()
 
@@ -162,24 +302,89 @@ class ContinuityLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
         """
-        Calculates the continuity gradient loss.
+        Calculates the continuity loss.
         Args:
-            y_hat:  output image
-            y:      target image
+            sr: downscaled image
+            hr: target image
 
         Returns:
             loss
         """
-        y_hat_dx = torch.conv2d(y_hat, self.x_kernel, padding=0)
-        y_dx = torch.conv2d(y, self.x_kernel, padding=0)
 
-        y_hat_dy = torch.conv2d(y_hat, self.y_kernel, padding=0)
-        y_dy = torch.conv2d(y, self.y_kernel, padding=0)
+        # SR and HR dx
+        sr_dx = torch.conv2d(sr, self.x_kernel, padding=0)
+        hr_dx = torch.conv2d(hr, self.x_kernel, padding=0)
 
-        # AE of sums of gradients
-        loss = (y_hat_dx.abs().mean() + y_hat_dy.abs().mean() - y_dx.abs().mean() - y_dy.abs().mean()).abs()
+        # SR and HR dy
+        sr_dy = torch.conv2d(sr, self.y_kernel, padding=0)
+        hr_dy = torch.conv2d(hr, self.y_kernel, padding=0)
+
+        # AE of sums of derivatives
+        loss = (sr_dx.abs().mean() + sr_dy.abs().mean() - hr_dx.abs().mean() - hr_dy.abs().mean()).abs()
+        return loss
+
+
+class SoftContinuityLoss(torch.nn.Module):
+    """
+    Modifies the Continuity loss function to match the definition of soft constraint.
+    """
+
+    def __init__(self, scale_factor: int):
+        """
+        Initializes the soft continuity loss.
+        """
+        super().__init__()
+
+        self.scale_factor = scale_factor
+
+        self.pixel_unshuffle = torch.nn.PixelUnshuffle(self.scale_factor)
+
+        # dx
+        x_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 1, 2))
+        self.register_buffer('x_kernel', x_kernel)
+
+        # dy
+        y_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
+        self.register_buffer('y_kernel', y_kernel)
+
+    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the soft continuity loss.
+        Args:
+            sr: downscaled image
+            lr: target image
+
+        Returns:
+            loss
+        """
+
+        # SR unshuffle
+        u_sr = self.pixel_unshuffle(sr)
+        _, _, h, w = u_sr.shape
+        u_sr = u_sr.reshape(-1, 1, h, w)
+
+        # SR derivatives
+        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
+        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
+
+        # SR derivatives reshaping
+        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h, w - 1)
+        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 1, w)
+
+        # SR derivatives mean
+        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
+        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
+
+        # LR derivatives
+        lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
+        lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
+
+        # AE of sums of derivatives
+        loss = (mean_sr_dx.abs().mean() + mean_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
         return loss
 
 
@@ -189,6 +394,7 @@ class GLoss(torch.nn.Module):
     """
     Implements the G-Loss function.
     """
+
     def __init__(self, scale_factor: int):
         """
         Initializes the G-Loss.
@@ -197,7 +403,7 @@ class GLoss(torch.nn.Module):
 
         self.scale_factor = scale_factor
 
-        # derivation kernels
+        # derivative kernels
         kernel = torch.tensor([
             [[-1, 0, 0], [0, 1, 0], [0, 0, 0]],
             [[0, -1, 0], [0, 1, 0], [0, 0, 0]],
@@ -213,35 +419,122 @@ class GLoss(torch.nn.Module):
 
         self.unshuffle = torch.nn.PixelUnshuffle(scale_factor)
 
-
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the G-Loss.
         Args:
-            y_hat:  output image
-            y:      target image
+            sr: downscaled image
+            hr: target image
 
         Returns:
             loss
         """
-        D_y = torch.conv2d(y, self.kernel, padding = 0)
-        D_y_hat = torch.conv2d(y_hat, self.kernel, padding = 0)
 
-        # MAE of sums of gradients
-        loss = (D_y - D_y_hat).abs().mean()
+        # HR and SR derivatives
+        hr_d = torch.conv2d(hr, self.kernel, padding=0)
+        sr_d = torch.conv2d(sr, self.kernel, padding=0)
 
-        u_y = self.unshuffle(y)
-        u_y_hat = self.unshuffle(y_hat)
+        # MAE of HR and SR derivatives
+        loss = (hr_d - sr_d).abs().mean()
 
-        _, _, h, w = u_y.shape
+        # SR and HR unshuffle
+        u_hr = self.unshuffle(hr)
+        u_sr = self.unshuffle(sr)
 
-        u_y = u_y.view(-1, 1, h, w)
-        u_y_hat = u_y_hat.view(-1, 1, h, w)
+        # SR and HR reshaping
+        _, _, h, w = u_hr.shape
+        u_hr = u_hr.reshape(-1, 1, h, w)
+        u_sr = u_sr.reshape(-1, 1, h, w)
 
-        D_u_y = torch.conv2d(u_y, self.kernel, padding = 0)
-        D_u_y_hat = torch.conv2d(u_y_hat, self.kernel, padding = 0)
+        # SR and HR unshuffled derivatives
+        u_hr_d = torch.conv2d(u_hr, self.kernel, padding=0)
+        u_sr_d = torch.conv2d(u_sr, self.kernel, padding=0)
 
-        loss += (D_u_y - D_u_y_hat).abs().mean()
+        # MAE of SR and HR unshuffled derivatives
+        loss += (u_hr_d - u_sr_d).abs().mean()
+        return loss
+
+
+# Lei Ge, Lei Dou. 2023. G-Loss: A loss function with gradient information for super-resolution.
+# Optik - International Journal for Light and Electron Optics. https://doi.org/10.1016/j.ijleo.2023.170750.
+class SoftGLoss(torch.nn.Module):
+    """
+    Modifies the G-Loss to match the definition of soft constraint.
+    """
+
+    def __init__(self, scale_factor: int):
+        """
+        Initializes the G-Loss.
+        """
+        super().__init__()
+
+        self.scale_factor = scale_factor
+
+        # derivative kernels
+        kernel = torch.tensor([
+            [[-1, 0, 0], [0, 1, 0], [0, 0, 0]],
+            [[0, -1, 0], [0, 1, 0], [0, 0, 0]],
+            [[0, 0, -1], [0, 1, 0], [0, 0, 0]],
+            [[0, 0, 0], [-1, 1, 0], [0, 0, 0]],
+            [[0, 0, 0], [0, 1, -1], [0, 0, 0]],
+            [[0, 0, 0], [0, 1, 0], [-1, 0, 0]],
+            [[0, 0, 0], [0, 1, 0], [0, -1, 0]],
+            [[0, 0, 0], [0, 1, 0], [0, 0, -1]],
+        ], dtype=torch.float32)
+        kernel = kernel.unsqueeze(1)
+        self.register_buffer('kernel', kernel)
+
+        self.unshuffle = torch.nn.PixelUnshuffle(scale_factor)
+
+    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the G-Loss.
+        Args:
+            sr: downscaled image
+            lr: low resolution image
+
+        Returns:
+            loss
+        """
+
+        # we will do gradients on distance of scale_factor
+        # sr = (B, 1, H, W)
+
+        # a particular image is divided into pieces, where in all scale_factor^2 channels, there are
+        # H / scale_factor x W / scale_factor pixels, originally in distance of scale_factor from each other
+        # u_sr = (B, scale_factor^2, H / scale_factor, W / scale_factor)
+        u_sr = self.unshuffle(sr)
+
+        _, _, h, w = u_sr.shape
+
+        # for easier convolution, we will move the channels into batches
+        # u_sr = (B * scale_factor^2, 1, H / scale_factor, W / scale_factor)
+        u_sr = u_sr.reshape(-1, 1, h, w)
+
+        # now the gradient calculation takes place
+        # for each batch we will now inspect how the value changed in 8 directions
+        # this corresponds to 8 directions in distance scale_factor in original image
+        # u_sr_d = (B * scale_factor^2, 8, H / scale_factor - 2, W / scale_factor - 2)
+        u_sr_d = torch.conv2d(u_sr, self.kernel, padding=0)
+
+        # now for each image, there are scale_factor^2 images with stride scale_factor
+        # and 8 gradients for 8 different directions
+        # u_sr_d = (B, scale_factor^2, 8, H / scale_factor - 2, W / scale_factor - 2)
+        u_sr_d = u_sr_d.view(-1, self.scale_factor ** 2, 8, h - 2, w - 2)
+
+        # we will calculate the mean differences through dimension 1, that leads to 8 channels for 8 direction,
+        # where in each direction we have the mean difference between two groups (scale_factor x scale_factor
+        # regions) of SR pixels downscaled from two LR pixels, where these means and the difference in LR image should
+        # be the same
+        # mean_sr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
+        mean_sr_d = u_sr_d.mean(dim=1, keepdim=True)
+
+        # lr = (B, 1, H / scale_factor, W / scale_factor)
+        # lr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
+        lr_d = torch.conv2d(lr, self.kernel, padding=0)
+
+        # MAE of derivatives
+        loss = (lr_d - mean_sr_d).abs().mean()
 
         return loss
 
@@ -255,6 +548,7 @@ class GradientVarianceLoss(torch.nn.Module):
     Measures the difference between the variance of patches of model output gradient and target gradient.
     We use Sobel operator to calculate the gradient.
     """
+
     def __init__(self, scale_factor: int):
         """
         Initializes the GVL.
@@ -275,48 +569,45 @@ class GradientVarianceLoss(torch.nn.Module):
 
         self.unfold = torch.nn.Unfold(kernel_size=self.scale_factor, padding=0, stride=self.scale_factor)
 
-
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the GVL.
         Args:
-            y_hat:  output image
-            y:      target image
+            sr: downscaled image
+            hr: target image
 
         Returns:
             loss
         """
 
         # added padding
-        y_hat_p = torch.nn.functional.pad(y_hat, pad=(1, 1, 1, 1), mode='replicate')
-        y_p = torch.nn.functional.pad(y, pad=(1, 1, 1, 1), mode='replicate')
+        sr_p = torch.nn.functional.pad(sr, pad=(1, 1, 1, 1), mode='replicate')
+        hr_p = torch.nn.functional.pad(hr, pad=(1, 1, 1, 1), mode='replicate')
 
         # sobel kernels
-        y_hat_dx = torch.conv2d(y_hat_p, self.x_kernel)
-        y_dx = torch.conv2d(y_p, self.x_kernel)
+        sr_dx = torch.conv2d(sr_p, self.x_kernel)
+        hr_dx = torch.conv2d(hr_p, self.x_kernel)
 
-        y_hat_dy = torch.conv2d(y_hat_p, self.y_kernel)
-        y_dy = torch.conv2d(y_p, self.y_kernel)
-
+        sr_dy = torch.conv2d(sr_p, self.y_kernel)
+        hr_dy = torch.conv2d(hr_p, self.y_kernel)
 
         # unfold into patches
-        G_x = self.unfold(y_dx)
-        G_y = self.unfold(y_dy)
+        u_hr_dx = self.unfold(hr_dx)
+        u_hr_dy = self.unfold(hr_dy)
 
-        G_hat_x = self.unfold(y_hat_dx)
-        G_hat_y = self.unfold(y_hat_dy)
+        u_sr_dx = self.unfold(sr_dx)
+        u_sr_dy = self.unfold(sr_dy)
 
-        # calculate variance in patches
-        v_x = torch.var(G_x, dim = 1, unbiased=True)
-        v_y = torch.var(G_y, dim = 1, unbiased=True)
+        # calculate the variance of dx and dy in patches
+        var_hr_dx = torch.var(u_hr_dx, dim=1, unbiased=True)
+        var_hr_dy = torch.var(u_hr_dy, dim=1, unbiased=True)
 
-        v_hat_x = torch.var(G_hat_x, dim = 1, unbiased=True)
-        v_hat_y = torch.var(G_hat_y, dim = 1, unbiased=True)
+        var_sr_dx = torch.var(u_sr_dx, dim=1, unbiased=True)
+        var_sr_dy = torch.var(u_sr_dy, dim=1, unbiased=True)
 
         # obtain final loss
-        loss = (v_hat_x - v_x).abs().mean() + (v_hat_y - v_y).abs().mean()
+        loss = (var_sr_dx - var_hr_dx).abs().mean() + (var_sr_dy - var_hr_dy).abs().mean()
         return loss
-
 
 
 # Inspired by : Xiong, M. Q., 2025: Impact of physical constraints on deep learning-based downscaling prediction of temperature.
@@ -333,6 +624,7 @@ class DirectionContinuityLoss(torch.nn.Module):
     Implements the direction continuity gradient loss function.
     Measures the difference between the orientation of gradient.
     """
+
     def __init__(self):
         """
         Initializes the orientation continuity loss function.
@@ -349,123 +641,115 @@ class DirectionContinuityLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the orientation continuity gradient loss.
         Args:
-            y_hat:  output image
-            y:      target image
+            sr: downscaled image
+            hr: target image
 
         Returns:
             loss
         """
 
         # dx and dropping the last row to match sizes with dy
-        y_hat_dx = torch.conv2d(y_hat, self.x_kernel, padding=0)
-        y_dx = torch.conv2d(y, self.x_kernel, padding=0)
-        y_hat_dx = y_hat_dx[:, :, :-1, :]
-        y_dx = y_dx[:, :, :-1, :]
+        sr_dx = torch.conv2d(sr, self.x_kernel, padding=0)
+        hr_dx = torch.conv2d(hr, self.x_kernel, padding=0)
+        sr_dx = sr_dx[:, :, :-1, :]
+        hr_dx = hr_dx[:, :, :-1, :]
 
         # dy and dropping the last column to match sizes with dx
-        y_hat_dy = torch.conv2d(y_hat, self.y_kernel, padding=0)
-        y_dy = torch.conv2d(y, self.y_kernel, padding=0)
-        y_hat_dy = y_hat_dy[:, :, :, :-1]
-        y_dy = y_dy[:, :, :, :-1]
+        sr_dy = torch.conv2d(sr, self.y_kernel, padding=0)
+        hr_dy = torch.conv2d(hr, self.y_kernel, padding=0)
+        sr_dy = sr_dy[:, :, :, :-1]
+        hr_dy = hr_dy[:, :, :, :-1]
 
-        # cosine similarity, scaling with magnitude, we don't want to punish large differences in angles
-        # when the gradient magnitude is close to zero
-        g_y_hat_xy = torch.stack([y_hat_dx, y_hat_dy], dim=1)
+        # SR and HR gradients
+        sr_grad = torch.stack([sr_dx, sr_dy], dim=1)
+        hr_grad = torch.stack([hr_dx, hr_dy], dim=1)
 
-        g_y_xy = torch.stack([y_dx, y_dy], dim=1)
+        # cosine similarity
+        sim = torch.cosine_similarity(sr_grad, hr_grad, dim=1)
 
-        sim = torch.cosine_similarity(g_y_hat_xy, g_y_xy, dim=1)
-
-        loss = ((1 - sim) * (y_dx.pow(2) + y_dy.pow(2)).sqrt()).abs().mean()
+        # scaling with magnitude, we don't want to punish large differences in angles when the gradient magnitude is close to zero
+        loss = ((1 - sim) * (hr_dx.pow(2) + hr_dy.pow(2) + EPS).sqrt()).abs().mean()
         return loss
 
 
-# Lei Ge, Lei Dou. 2023. G-Loss: A loss function with gradient information for super-resolution.
-# Optik - International Journal for Light and Electron Optics. https://doi.org/10.1016/j.ijleo.2023.170750.
-class SoftGLoss(torch.nn.Module):
+class SoftDirectionContinuityLoss(torch.nn.Module):
     """
-    Modifies the G-Loss to match the definition of soft constraint.
+    Modifies the Direction continuity loss function to match the definition of soft constraint.
     """
 
     def __init__(self, scale_factor: int):
         """
-        Initializes the G-Loss.
+        Initializes the orientation continuity loss function.
         """
         super().__init__()
 
         self.scale_factor = scale_factor
 
-        # derivation kernels
-        kernel = torch.tensor([
-            [[-1, 0, 0], [0, 1, 0], [0, 0, 0]],
-            [[0, -1, 0], [0, 1, 0], [0, 0, 0]],
-            [[0, 0, -1], [0, 1, 0], [0, 0, 0]],
-            [[0, 0, 0], [-1, 1, 0], [0, 0, 0]],
-            [[0, 0, 0], [0, 1, -1], [0, 0, 0]],
-            [[0, 0, 0], [0, 1, 0], [-1, 0, 0]],
-            [[0, 0, 0], [0, 1, 0], [0, -1, 0]],
-            [[0, 0, 0], [0, 1, 0], [0, 0, -1]],
-        ], dtype=torch.float32)
-        kernel = kernel.unsqueeze(1)
-        self.register_buffer('kernel', kernel)
+        self.pixel_unshuffle = torch.nn.PixelUnshuffle(scale_factor)
 
-        self.unshuffle = torch.nn.PixelUnshuffle(scale_factor)
+        # dx kernel
+        x_kernel = torch.tensor([-1, 1], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 1, 2))
+        self.register_buffer('x_kernel', x_kernel)
 
-    def forward(self, y_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        # dy kernel
+        y_kernel = torch.tensor([1, -1], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
+        self.register_buffer('y_kernel', y_kernel)
+
+    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
-        Calculates the G-Loss.
+        Calculates the orientation continuity gradient loss.
         Args:
-            y_hat:  output image
-            y:      target image
+            sr: downscaled image
+            lr: low resolution image
 
         Returns:
             loss
         """
 
+        # SR unshuffle
+        u_sr = self.pixel_unshuffle(sr)
 
-        # we will do gradients on distance of scale_factor
-        # y_hat = (B, 1, H, W)
+        # unshuffled SR reshape
+        _, _, h, w = u_sr.shape
+        u_sr = u_sr.reshape(-1, 1, h, w)
 
-        # a particular image is divided into pieces, where in all scale_factor^2 channels, there are
-        # H / scale_factor x W / scale_factor pixels, originally in distance of scale_factor from each other
-        # u_y_hat = (B, scale_factor^2, H / scale_factor, W / scale_factor)
-        u_y_hat = self.unshuffle(y_hat)
+        # unshuffled SR derivatives
+        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
+        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
 
-        _, _, h, w = u_y_hat.shape
+        # dropping the last row to match sizes with dy
+        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h, w - 1)
+        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
+        mean_sr_dx = mean_sr_dx[:, :, :-1, :]
 
-        # for easier convolution, we will move the channels into batches
-        # u_y_hat = (B * scale_factor^2, 1, H / scale_factor, W / scale_factor)
-        u_y_hat = u_y_hat.view(-1, 1, h, w)
+        # dropping the last column to match sizes with dx
+        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 1, w)
+        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
+        mean_sr_dy = mean_sr_dy[:, :, :, :-1]
 
-        # now the gradient calculation takes place
-        # for each batch we will now inspect how the value changed in 8 directions
-        # this corresponds to 8 directions in distance scale_factor in original image
-        # D_u_y_hat = (B * scale_factor^2, 8, H / scale_factor - 2, W / scale_factor - 2)
-        D_u_y_hat = torch.conv2d(u_y_hat, self.kernel, padding=0)
+        # LR derivatives
+        lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
+        lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
 
-        # now for each image, there are scale_factor^2 images with stride scale_factor
-        # and 8 gradients for 8 different directions
-        # D_u_y_hat = (B, scale_factor^2, 8, H / scale_factor - 2, W / scale_factor - 2)
-        D_u_y_hat = D_u_y_hat.view(-1, self.scale_factor ** 2, 8, h - 2, w - 2)
+        # dropping a row, resp. column to match dy, resp. dx
+        lr_dx = lr_dx[:, :, :-1, :]
+        lr_dy = lr_dy[:, :, :, :-1]
 
-        # we will calculate the mean differences through dimension 1, that leads to 8 channels for 8 direction,
-        # where in each direction we have the mean difference between two groups (scale_factor x scale_factor
-        # regions) of SR pixels downscaled from two LR pixels, where these means and the difference in LR image should
-        # be the same
-        # D_u_y_hat_mean = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
-        D_u_y_hat_mean = D_u_y_hat.mean(dim=1, keepdim=True)
+        # SR and LR gradients
+        sr_grad = torch.stack([mean_sr_dx, mean_sr_dy], dim=1)
+        lr_grad = torch.stack([lr_dx, lr_dy], dim=1)
 
-        # x = (B, 1, H / scale_factor, W / scale_factor)
-        # D_x = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
-        D_x = torch.conv2d(x, self.kernel, padding=0)
+        # cosine similarity
+        sim = torch.cosine_similarity(sr_grad, lr_grad, dim=1)
 
-        loss = (D_x - D_u_y_hat_mean).abs().mean()
-
+        # scaling with magnitude, we don't want to punish large differences in angles when the gradient magnitude is close to zero
+        loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).abs().mean()
         return loss
 
 
@@ -484,8 +768,8 @@ class SoftGLoss(torch.nn.Module):
 #     #       [0., 1., 1., 1., 0., 0.],
 #     #       [0., 0., 1., 1., 0., 1.]]]]).float()
 #     #
-#     dcloss = SoftGLoss(3)
-#     #
+#     loss = SoftDirectionContinuityLoss(3)
+#
 #     x = torch.randn(2, 1, 4, 4)
 #     y_hat = torch.randn(2, 1, 12, 12)
 #
@@ -503,7 +787,9 @@ class SoftGLoss(torch.nn.Module):
 #     #                         [7, 7, 8, 8, 9, 9],
 #     #                         [7, 7, 8, 8, 9, 9]]]]).float()
 #
-#     print(dcloss(y_hat, x))
+#     print(loss(y_hat, x))
+#
+#     print(x)
 #     print(y_hat)
 
 
@@ -537,51 +823,67 @@ class LossCombination(torch.nn.Module):
         self.gloss = GLoss(scale_factor)
         self.gvl = GradientVarianceLoss(scale_factor)
         self.dcl = DirectionContinuityLoss()
+        self.soft_simple_gradient = SoftSimpleGradientLoss(scale_factor)
+        self.soft_continuity = SoftContinuityLoss(scale_factor)
+        self.soft_sobel_gradient = SoftSobelGradientLoss(scale_factor)
         self.soft_gloss = SoftGLoss(scale_factor)
+        self.soft_dcl = SoftDirectionContinuityLoss(scale_factor)
 
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor = None) -> torch.Tensor:
         """
         Calculates the loss.
         Args:
-            y_hat : torch.Tensor    downscaled image
-            y : torch.Tensor        target image
-            x : torch.Tensor        origin image
+            sr : torch.Tensor   downscaled image
+            hr : torch.Tensor   target image
+            lr : torch.Tensor   low resolution image
         Returns:
             loss
         """
-        loss = torch.zeros(1, dtype=y_hat.dtype, device=y_hat.device)
+        loss = torch.zeros(1, dtype=sr.dtype, device=sr.device)
 
         if "mae" in self.weights.keys():
-            loss += self.weights["mae"] * self.mae(y_hat, y)
+            loss += self.weights["mae"] * self.mae(sr, hr)
 
         if "mse" in self.weights.keys():
-            loss += self.weights["mse"] * self.mse(y_hat, y)
+            loss += self.weights["mse"] * self.mse(sr, hr)
 
         if "rmse" in self.weights.keys():
-            loss += self.weights["rmse"] * self.mse(y_hat, y).sqrt()
+            loss += self.weights["rmse"] * self.mse(sr, hr).sqrt()
 
         if "conservation" in self.weights.keys():
-            loss += self.weights["conservation"] * self.conservation(y_hat, x)
+            loss += self.weights["conservation"] * self.conservation(sr, lr)
 
         if "simple_gradient" in self.weights.keys():
-            loss += self.weights["simple_gradient"] * self.simple_gradient(y_hat, y)
+            loss += self.weights["simple_gradient"] * self.simple_gradient(sr, hr)
 
         if "continuity" in self.weights.keys():
-            loss += self.weights["continuity"] * self.continuity(y_hat, y)
+            loss += self.weights["continuity"] * self.continuity(sr, hr)
 
         if "sobel_gradient" in self.weights.keys():
-            loss += self.weights["sobel_gradient"] * self.sobel_gradient(y_hat, y)
+            loss += self.weights["sobel_gradient"] * self.sobel_gradient(sr, hr)
 
         if "gloss" in self.weights.keys():
-            loss += self.weights["gloss"] * self.gloss(y_hat, y)
+            loss += self.weights["gloss"] * self.gloss(sr, hr)
 
         if "gvl" in self.weights.keys():
-            loss += self.weights["gvl"] * self.gvl(y_hat, y)
+            loss += self.weights["gvl"] * self.gvl(sr, hr)
 
         if "dcl" in self.weights.keys():
-            loss += self.weights["dcl"] * self.dcl(y_hat, y)
+            loss += self.weights["dcl"] * self.dcl(sr, hr)
+
+        if "soft_simple_gradient" in self.weights.keys():
+            loss += self.weights["soft_simple_gradient"] * self.soft_simple_gradient(sr, lr)
+
+        if "soft_continuity" in self.weights.keys():
+            loss += self.weights["soft_continuity"] * self.soft_continuity(sr, lr)
+
+        if "soft_sobel_gradient" in self.weights.keys():
+            loss += self.weights["soft_sobel_gradient"] * self.soft_sobel_gradient(sr, lr)
 
         if "soft_gloss" in self.weights.keys():
-            loss += self.weights["soft_gloss"] * self.soft_gloss(y_hat, x)
+            loss += self.weights["soft_gloss"] * self.soft_gloss(sr, lr)
+
+        if "soft_dcl" in self.weights.keys():
+            loss += self.weights["soft_dcl"] * self.soft_dcl(sr, lr)
 
         return loss
