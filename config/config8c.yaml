@@ -15,6 +15,7 @@ optimizer:
   class_path: torch.optim.Adam
   init_args:
     lr: 1e-4
+    weight_decay: 1e-5
 
 lr_scheduler:
   class_path: torch.optim.lr_scheduler.StepLR
