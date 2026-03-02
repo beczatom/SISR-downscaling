@@ -9,7 +9,7 @@ class ConservationLoss(torch.nn.Module):
     Measures the difference between the mean of downscaled pixel and the origin pixel.
     """
 
-    def __init__(self, scale_factor: int):
+    def __init__(self, scale_factor: int, penalization : str = 'mae'):
         """
         Initializes the conservation loss.
         Notes:
@@ -20,6 +20,11 @@ class ConservationLoss(torch.nn.Module):
         """
         super().__init__()
         self.scale_factor = scale_factor
+
+        if penalization == 'mae':
+            self.penalization = torch.nn.L1Loss(reduction='mean')
+        else:
+            self.penalization = torch.nn.MSELoss(reduction='mean')
 
         # will compute the means in downscaled LR pixels
         self.avg_pool = torch.nn.AvgPool2d(kernel_size=scale_factor, stride=scale_factor, padding=0)
@@ -39,9 +44,7 @@ class ConservationLoss(torch.nn.Module):
         # and we want them to be the same, so we penalize the difference between them
         means = self.avg_pool(sr)
 
-        # this corresponds to MAE(1/n \sum(sr), lr)
-        # TODO try MSE, like Harder et al. section 5.3
-        return (means - lr).abs().mean()
+        return self.penalization(means, lr)
 
 
 class SimpleGradientLoss(torch.nn.Module):
@@ -96,7 +99,7 @@ class SoftSimpleGradientLoss(torch.nn.Module):
     Modifies the Simple gradient loss function to match the definition of soft constraint.
     """
 
-    def __init__(self, scale_factor: int):
+    def __init__(self, scale_factor: int, penalization : str = 'mae'):
         """
         Initializes the simple gradient loss.
         """
@@ -104,6 +107,11 @@ class SoftSimpleGradientLoss(torch.nn.Module):
 
         self.scale_factor = scale_factor
         self.pixel_unshuffle = torch.nn.PixelUnshuffle(scale_factor)
+
+        if penalization == 'mae':
+            self.penalization = torch.nn.L1Loss(reduction='mean')
+        else:
+            self.penalization = torch.nn.MSELoss(reduction='mean')
 
         # dx
         x_kernel = torch.tensor([1, -1], dtype=torch.float32)
@@ -148,8 +156,8 @@ class SoftSimpleGradientLoss(torch.nn.Module):
         lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
         lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
 
-        # MAE of dx and dy
-        loss = (mean_sr_dx - lr_dx).abs().mean() + (mean_sr_dy - lr_dy).abs().mean()
+        # MAE/MSE of dx and dy
+        loss = self.penalization(mean_sr_dx, lr_dx) + self.penalization(mean_sr_dy, lr_dy)
         return loss
 
 
@@ -202,7 +210,6 @@ class SobelGradientLoss(torch.nn.Module):
         sr_grad = (sr_dx.pow(2) + sr_dy.pow(2) + EPS).sqrt()
 
         # MAE of gradients
-        # TODO try MSE
         loss = (hr_grad - sr_grad).abs().mean()
         return loss
 
@@ -214,15 +221,19 @@ class SoftSobelGradientLoss(torch.nn.Module):
     Modifies the Sobel gradient loss function to match the definition of soft constraint.
     """
 
-    def __init__(self, scale_factor: int):
+    def __init__(self, scale_factor: int, penalization: str = 'mean'):
         """
         Initializes the Soft Sobel gradient loss.
         """
         super().__init__()
 
         self.scale_factor = scale_factor
-
         self.pixel_unshuffle = torch.nn.PixelUnshuffle(self.scale_factor)
+
+        if penalization == 'mae':
+            self.penalization = torch.nn.L1Loss(reduction='mean')
+        else:
+            self.penalization = torch.nn.MSELoss(reduction='mean')
 
         # dx
         x_kernel = torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32)
@@ -271,10 +282,8 @@ class SoftSobelGradientLoss(torch.nn.Module):
         lr_grad = (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()
         sr_grad = (mean_sr_dx.pow(2) + mean_sr_dy.pow(2) + EPS).sqrt()
 
-        # MAE of gradients
-        # TODO try MSE
-        loss = (lr_grad - sr_grad).abs().mean()
-        return loss
+        # MAE/MSE of gradients
+        return self.penalization(sr_grad, lr_grad)
 
 
 # Xiong, M. Q., 2025: Impact of physical constraints on deep learning-based downscaling prediction of temperature.
@@ -331,15 +340,16 @@ class SoftContinuityLoss(torch.nn.Module):
     Modifies the Continuity loss function to match the definition of soft constraint.
     """
 
-    def __init__(self, scale_factor: int):
+    def __init__(self, scale_factor: int, penalization: str = 'mae'):
         """
         Initializes the soft continuity loss.
         """
         super().__init__()
 
         self.scale_factor = scale_factor
-
         self.pixel_unshuffle = torch.nn.PixelUnshuffle(self.scale_factor)
+
+        self.penalization = penalization
 
         # dx
         x_kernel = torch.tensor([1, -1], dtype=torch.float32)
@@ -383,8 +393,13 @@ class SoftContinuityLoss(torch.nn.Module):
         lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
         lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
 
-        # AE of sums of derivatives
-        loss = (mean_sr_dx.abs().mean() + mean_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
+        # AE/SE of sums of derivatives
+        loss = torch.zeros(1, dtype=sr.dtype, device=sr.device)
+        if self.penalization == 'mae':
+            loss = (mean_sr_dx.abs().mean() + mean_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
+        elif self.penalization == 'mse':
+            loss = (mean_sr_dx.pow(2).sum() + mean_sr_dy.pow(2).sum() - lr_dx.pow(2).sum() - lr_dy.pow(2).sum()).abs()
+
         return loss
 
 
@@ -462,13 +477,18 @@ class SoftGLoss(torch.nn.Module):
     Modifies the G-Loss to match the definition of soft constraint.
     """
 
-    def __init__(self, scale_factor: int):
+    def __init__(self, scale_factor: int, penalization: str = 'mae'):
         """
         Initializes the G-Loss.
         """
         super().__init__()
 
         self.scale_factor = scale_factor
+
+        if penalization == 'mae':
+            self.penalization = torch.nn.L1Loss(reduction='mean')
+        else:
+            self.penalization = torch.nn.MSELoss(reduction='mean')
 
         # derivative kernels
         kernel = torch.tensor([
@@ -533,10 +553,8 @@ class SoftGLoss(torch.nn.Module):
         # lr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
         lr_d = torch.conv2d(lr, self.kernel, padding=0)
 
-        # MAE of derivatives
-        loss = (lr_d - mean_sr_d).abs().mean()
-
-        return loss
+        # MAE/MSE of derivatives
+        return self.penalization(mean_sr_d, lr_d)
 
 
 # Abrahamyan. 2022. Gradient Variance Loss for Structure-Enhanced Image Super-Resolution.
@@ -681,13 +699,15 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
     Modifies the Direction continuity loss function to match the definition of soft constraint.
     """
 
-    def __init__(self, scale_factor: int):
+    def __init__(self, scale_factor: int, penalization : str = 'mae'):
         """
         Initializes the orientation continuity loss function.
         """
         super().__init__()
 
         self.scale_factor = scale_factor
+
+        self.penalization = penalization
 
         self.pixel_unshuffle = torch.nn.PixelUnshuffle(scale_factor)
 
@@ -749,7 +769,11 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
         sim = torch.cosine_similarity(sr_grad, lr_grad, dim=1)
 
         # scaling with magnitude, we don't want to punish large differences in angles when the gradient magnitude is close to zero
-        loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).abs().mean()
+        loss = torch.zeros(1, dtype=sr.dtype, device=sr.device)
+        if self.penalization == 'mae':
+            loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).abs().mean()
+        elif self.penalization == 'mse':
+            loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).pow(2).mean()
         return loss
 
 
@@ -816,18 +840,18 @@ class LossCombination(torch.nn.Module):
 
         self.mse = torch.nn.MSELoss()
         self.mae = torch.nn.L1Loss()
-        self.conservation = ConservationLoss(scale_factor)
+        self.conservation = ConservationLoss(scale_factor, penalization='mse')
         self.simple_gradient = SimpleGradientLoss()
         self.continuity = ContinuityLoss()
         self.sobel_gradient = SobelGradientLoss()
         self.gloss = GLoss(scale_factor)
         self.gvl = GradientVarianceLoss(scale_factor)
         self.dcl = DirectionContinuityLoss()
-        self.soft_simple_gradient = SoftSimpleGradientLoss(scale_factor)
-        self.soft_continuity = SoftContinuityLoss(scale_factor)
-        self.soft_sobel_gradient = SoftSobelGradientLoss(scale_factor)
-        self.soft_gloss = SoftGLoss(scale_factor)
-        self.soft_dcl = SoftDirectionContinuityLoss(scale_factor)
+        self.soft_simple_gradient = SoftSimpleGradientLoss(scale_factor, penalization='mse')
+        self.soft_continuity = SoftContinuityLoss(scale_factor, penalization='mse')
+        self.soft_sobel_gradient = SoftSobelGradientLoss(scale_factor, penalization='mse')
+        self.soft_gloss = SoftGLoss(scale_factor, penalization='mse')
+        self.soft_dcl = SoftDirectionContinuityLoss(scale_factor, penalization='mse')
 
     def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor = None) -> torch.Tensor:
         """
