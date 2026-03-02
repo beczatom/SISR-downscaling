@@ -38,7 +38,7 @@ $$
 > TODO: Try MSE and other $\alpha$s.
 
 ## ⚙️ Config
-- Early stopping based on validation L1 loss (MAE), with patience 10.
+- Early stopping based on validation L1 loss (MAE), with patience 10, resp. 15.
 
 ## 🚀 Optimizer
 - Adam with learning rate 1e-4.
@@ -54,26 +54,24 @@ $$
   - 8 CPU cores
   - 8 dataloader workers
   - 32 GB RAM
-  - elapsed time: 11.3h
   - batch size: 32
-  - epochs: 56
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{2, 12}**.
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{2, 12, 19}**.
 
 ---
 
 ## 🏆 Result
 
-| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
-|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
-| 2           | 0.01     | 0.02926               | 0.03757                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | soft conservation law        | [2]     |
-| 12 (2B)     | 0.01     | 0.02564               | 0.03152                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                              |         |
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                 |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|-----------------------|
+| 2           | 0.01     | 0.02926               | 0.03757                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | soft conservation law |
+| 12 (2B)     | 0.01     | **0.02564**           | **0.03152**            | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 | soft conservation law |
+| 19 (2C)     | 0.01     | 0.03642               | 0.05001                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft conservation law |
 
-- lowest validation MAE: 0.02926
-- a little bit less than standard EDSR (0.03409) (experiments/standard_edsr.md)
+- lowest validation MAE: 0.02564, RMSE: 0.03152
+- almost the same as standard EDSR (MAE: 0.02552, RMSE: 0.03076) (experiments/standard_edsr.md)
 
 ## 📝 Notes
-- the loss function was slightly more noisy than in standard EDSR training
-- slightly better validation MAE can suggest that this law is helpful, but we need to try more $\alpha$s 
+- one of the few, this is a soft constraint as defined by Harder et al. [4] 
 
 ---
 
@@ -81,7 +79,6 @@ $$
 - [ ] for conservation loss try MSE
 - [ ] for loss try other $\alpha$s
 - [ ] try hard constraining the conservation laws
-- [ ] try other soft constraints
 
 ---
 

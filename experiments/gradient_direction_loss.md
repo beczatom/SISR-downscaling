@@ -15,8 +15,9 @@
   - test set: 2003 - 2012
 
 ## 📉 Loss function
+### Standard approach (HR dependent)
 - Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
-- Gradient direction loss (src/loss/loss/GradientDirectionLoss) was added, inspired by [4].
+- Gradient direction loss (src/loss/loss/DirectionContinuityLoss) was added, inspired by [4].
 - Xiong et al. [4] calculate the overall gradient direction of image $I$ with pixels $y_{i,j}$ as follows:
 $$
 \sum \text{atan2}(y_{i,j}, y_{i + 1, j}) + \sum \text{atan2}(y_{i,j}, y_{i, j + 1})
@@ -58,9 +59,8 @@ M = \sqrt{\left(\partial_xI^\text{HR}\right)^2 + \left(\partial_yI^\text{HR}\rig
 $$
   6. Finally, the gradient direction loss will be:
 $$
-\mathcal{L}_{GDL} = \frac{1}{N}\left|(1 - S) \cdot M\right|
+\mathcal{L}_{GDL} = \frac{1}{N}\sum\left|(1 - S) \cdot M\right|
 $$
-> TODO: try MSE
 - Therefore, the final loss function is:
 $$
 \mathcal{L} = (1 - \alpha) \cdot \mathcal{L}_{MAE} + \alpha \cdot \mathcal{L}_{GDL}
@@ -69,8 +69,24 @@ $$
 - for now, we used $\alpha=0.01$ and $MAE$ for gradient loss.
 > TODO: Try MSE and other $\alpha$s.
 
+### Soft constraining approach (LR dependent)
+- Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
+- Soft gradient direction loss (src/loss/loss/SoftDirectionContinuityLoss).
+- Similarly to Soft simple gradient loss (experiments/simple_gradient_loss) we obtain $\bar{\partial}_xI^\text{SR}$ and $\bar{\partial}_yI^\text{SR}$ as mean derivatives of SR.
+- Then the steps are corresponding to above:
+$$
+S = \operatorname{cosine\_similarity}(\operatorname{stack}(\bar{\partial}_xI^\text{SR}, \bar{\partial}_yI^\text{SR}),
+\operatorname{stack}(\partial_xI^\text{LR}, \partial_yI^\text{LR}))
+$$
+$$
+M = \sqrt{\left(\partial_xI^\text{LR}\right)^2 + \left(\partial_yI^\text{LR}\right)^2}
+$$
+$$
+\mathcal{L}_{GDL} = \frac{1}{N}\sum\left|(1 - S) \cdot M\right|
+$$
+
 ## ⚙️ Config
-- Early stopping based on validation L1 loss (MAE), with patience 10.
+- Early stopping based on validation L1 loss (MAE), with patience 10, resp. 15.
 
 ## 🚀 Optimizer
 - Adam with learning rate 1e-4.
@@ -86,22 +102,28 @@ $$
   - 8 CPU cores
   - 8 dataloader workers
   - 32 GB RAM
-  - elapsed time: 8.5h
   - batch size: 32
-  - epochs: 42
 - training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_4**.
 
 ---
 
 ## 🏆 Results
-| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
-|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
-| 8           | 0.01     | **0.02553**           | **0.03055**            | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | GDL; magnitude scaling : no  | [3]     |
-| 9           | 0.1      | 0.03801               | 0.05111                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | GDL; magnitude scaling : no  | [3]     |
-| 11 (8B)     | 0.01     | 0.04178               | 0.05991                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 | GDL; magnitude scaling : yes | [3]     |
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                             |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|-----------------------------------|
+| 8           | 0.01     | **0.02553**           | **0.03055**            | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | GDL; magnitude scaling : no       |
+| 9           | 0.1      | 0.03801               | 0.05111                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | GDL; magnitude scaling : no       |
+| 11 (8B)     | 0.01     | 0.04178               | 0.05991                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 | GDL; magnitude scaling : yes      |
+| 26 (8C)     | 0.01     | 0.03659               | 0.05057                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft GDL; magnitude scaling : yes |
+
+- lowest validation MAE: 0.02533, RMSE: 0.03055
+- almost the same as standard EDSR (MAE: 0.02552, RMSE: 0.03076) (experiments/standard_edsr.md)
+
 
 ## 📝 Notes
+- one of the few, this type achieved its best on EDSR model with 256 features and 32 residual blocks, but that was not a soft constraint, so it might be irrelevant.
+- magnitude scaling might not improve the performance, we do not have an explanation for this fact
 - this is not a soft constraint, as defined by Harder et al. [6], because it depends on HR
+- the soft constraint approach **COULD BE** a soft constraint, as defined by Beucler et al. [7]
 - at this point of modification of [4], its confusing name, proven by [5], there's maybe no need to include this in thesis
 
 ---
@@ -121,3 +143,6 @@ YANG, Qidong; SATTIGERI, Prasanna; SZWARCMAN, Daniela; WATSON, Campbell;
 ROLNICK, David. Hard-Constrained Deep Learning for
 Climate Downscaling. 2024. Available from arXiv: 2208.05424 [physics.ao-
 ph].
+7. BEUCLER, Tom; PRITCHARD, Michael; RASP, Stephan; OTT, Jordan; BALDI, Pierre; GENTINE, Pierre. Enforcing Analytic Constraints
+in Neural Networks Emulating Physical Systems. Phys. Rev. Lett. 2021,
+vol. 126, p. 098302. Available from doi: 10.1103/PhysRevLett.126.09

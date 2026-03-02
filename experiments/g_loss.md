@@ -15,6 +15,7 @@
   - test set: 2003 - 2012
 
 ## 📉 Loss function
+### Standard aproach (HR dependent)
 - Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
 - G-Loss (src/loss/loss/GLoss) was added [4].
 - Derivatives are calculated in all the 8 directions:
@@ -44,12 +45,11 @@ $$
 G^\text{HR} = I^\text{HR}_\text{U} \star C_G \qquad G^\text{SR} = I^\text{SR}_\text{U} \star C_G
 $$
 - This way we are essentially calculating gradient on distance $n$ between neighboring pixels.
-> TODO: add an illustration
+![soft simple gradient loss](img/g_loss.svg)
 - So the loss will be:
 $$
-\mathcal{L}_\text{U} = \operatorname{Mean}\left|G^\text{HR} - G^\text{SR}\right|
+\mathcal{L}_\text{U} = \text{Mean}\left|G^\text{HR} - G^\text{SR}\right|
 $$
-> FIXME: Is there an error in paper? Why is the math expression other than the more logical figure?
 - Therefore, the G loss function is:
 $$
 \mathcal{L} = (1 - \alpha) \cdot \mathcal{L}_{MAE} + \alpha \cdot \left(\mathcal{L}_G + \mathcal{L}_\text{U}\right)
@@ -58,8 +58,22 @@ $$
 - for now, we used $\alpha=0.01$.
 > TODO: Try other $\alpha$s.
 
+### Soft constraining approach (LR dependent)
+- Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
+- Soft G-loss (src/loss/loss/SoftGLoss) was added [4].
+- Similarly to Soft simple gradient loss (experiments/simple_gradient_loss) we obtain $\bar{D}^\text{SR}_1 \dots \bar{D}^\text{SR}_8$ as mean derivatives of SR 
+and denote them as $\bar{G}^\text{SR}$.
+- The loss will be:
+$$
+\mathcal{L}_\text{U} = \text{Mean}\left|G^\text{LR} - \bar{G}^\text{SR}\right|
+$$
+- We cannot compute $\mathcal{L}_G$ here, so the G loss function is:
+$$
+\mathcal{L} = (1 - \alpha) \cdot \mathcal{L}_{MAE} + \alpha \cdot\mathcal{L}_\text{U}
+$$
+
 ## ⚙️ Config
-- Early stopping based on validation L1 loss (MAE), with patience 10.
+- Early stopping based on validation L1 loss (MAE), with patience 10, resp. 15.
 
 ## 🚀 Optimizer
 - Adam with learning rate 1e-4.
@@ -75,29 +89,31 @@ $$
   - 8 CPU cores
   - 8 dataloader workers
   - 32 GB RAM
-  - elapsed time: 10.4h
   - batch size: 32
-  - epochs: 51
 - training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{6, 16}**.
 
 ---
 
 ## 🏆 Result
 
-| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
-|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
-| 6           | 0.01     | 0.03259               | 0.04231                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | G-Loss                       | [5]     |
-| 16 (6B)     | 0.01     | 0.02562               | 0.03146                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                              |         |
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes       |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|-------------|
+| 6           | 0.01     | 0.03259               | 0.04231                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | G-Loss      |
+| 16 (6B)     | 0.01     | **0.02562**           | **0.03146**            | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |             |
+| 20 (6C)     | 0.01     | 0.02722               | 0.03658                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss |
 
+- lowest MAE: 0.02562, RMSE: 0.03146
+- almost same as standard EDSR (MAE: 0.02552, RMSE: 0.03076) (experiments/standard_edsr.md)
 
 ## 📝 Notes
-- this is not a soft constraint, as defined by Harder et al. [5], because it depends on HR
+- the standard approach was the best
+- this is not a soft constraint, as defined by Harder et al. [5]
+- the soft constraint approach **COULD BE** a soft constraint, as defined by Beucler et al. [6]
 
 ---
 
 ## 👩‍💻 Future work
 - [ ] for loss try other $\alpha$s
-- [ ] try other soft constraints
 
 ---
 
@@ -114,3 +130,6 @@ YANG, Qidong; SATTIGERI, Prasanna; SZWARCMAN, Daniela; WATSON, Campbell;
 ROLNICK, David. Hard-Constrained Deep Learning for
 Climate Downscaling. 2024. Available from arXiv: 2208.05424 [physics.ao-
 ph].
+6. BEUCLER, Tom; PRITCHARD, Michael; RASP, Stephan; OTT, Jordan; BALDI, Pierre; GENTINE, Pierre. Enforcing Analytic Constraints
+in Neural Networks Emulating Physical Systems. Phys. Rev. Lett. 2021,
+vol. 126, p. 098302. Available from doi: 10.1103/PhysRevLett.126.09

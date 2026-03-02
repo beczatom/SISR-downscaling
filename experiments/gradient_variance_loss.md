@@ -67,9 +67,7 @@ $$
   - 8 CPU cores
   - 8 dataloader workers
   - 32 GB RAM
-  - elapsed time: 7h
   - batch size: 32
-  - epochs: 34
 - training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{7, 17}**.
 
 ---
@@ -82,6 +80,7 @@ $$
 
 ## 📝 Notes
 - this is not a soft constraint, as defined by Harder et al. [5], because it depends on HR
+- unlike other types, there we could not find a straightforward conversion to meet soft constraint definition. 
 
 ---
 

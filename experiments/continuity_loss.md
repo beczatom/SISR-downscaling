@@ -15,6 +15,7 @@
   - test set: 2003 - 2012
 
 ## 📉 Loss function
+### Standard approach (HR dependent)
 - Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
 - Continuity loss (src/loss/loss/ContinuitytLoss) was added [4].
 - Simple derivative with respect to x was calculated by convolution with kernel $\begin{bmatrix} 1 & -1\end{bmatrix}$.
@@ -39,8 +40,17 @@ $$
 - for now, we used $\alpha=0.01$ and $MAE$ for gradient loss.
 > TODO: Try MSE and other $\alpha$s.
 
+### Soft constraining approach (LR dependent)
+- Standard MAE loss $\left(\mathcal{L}_{MAE}\right)$ between model output and target.
+- Soft continuity loss (src/loss/loss/SoftContinuitytLoss) was added [4].
+- Similarly to Soft simple gradient loss (experiments/simple_gradient_loss) we obtain $\bar{D}^\text{SR}_x$ and $\bar{D}^\text{SR}_y$ as mean derivatives of SR.
+- The soft continuity loss will be similar to above:
+$$
+\mathcal{L}_D = \frac{1}{N}\sum \left| \bar{D}^\text{SR}_x \right| + \frac{1}{N}\sum \left| \bar{D}^\text{SR}_y \right| - \frac{1}{N}\sum \left| D^\text{LR}_x \right| - \frac{1}{N}\sum \left| D^\text{LR}_y \right|
+$$
+
 ## ⚙️ Config
-- Early stopping based on validation L1 loss (MAE), with patience 10.
+- Early stopping based on validation L1 loss (MAE), with patience 10, resp. 15.
 
 ## 🚀 Optimizer
 - Adam with learning rate 1e-4.
@@ -56,30 +66,32 @@ $$
   - 8 CPU cores
   - 8 dataloader workers
   - 32 GB RAM
-  - elapsed time: 8.5h
   - batch size: 32
-  - epochs: 42
-- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{4, 14}**.
+- training logs are saved on RCI in ~/SISR-downscaling/logs/lightning_logs as **version_{4, 14, 24}**.
 
 ---
 
 ## 🏆 Result
-| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
-|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
-| 4           | 0.01     | 0.03024               | 0.04044                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | continuity loss              | [3]     |
-| 14 (4B)     | 0.01     | 0.02563               | 0.03145                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                              |         |
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                    |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|--------------------------|
+| 4           | 0.01     | 0.03024               | 0.04044                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | standard continuity loss |
+| 14 (4B)     | 0.01     | 0.02563               | 0.03145                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 | standard continuity loss |
+| 24 (4C)     | 0.01     | **0.02550**           | **0.03078**            | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft continuity loss     |
+
+- lowest MAE: 0.0255, RMSE: 0.03078
+- almost same as standard EDSR (MAE: 0.02552, RMSE: 0.03076) (experiments/standard_edsr.md)
 
 
 ## 📝 Notes
-- slightly better validation MAE can suggest that this law is helpful, but we need to try more $\alpha$s 
-- this is not a soft constraint, as defined by Harder et al. [5], because it depends on HR
+- the best result was achieved for **soft-constrained version**
+- this is not a soft constraint, as defined by Harder et al. [5]
+- the soft constraint approach **COULD BE** a soft constraint, as defined by Beucler et al. [6]
 
 ---
 
 ## 👩‍💻 Future work
 - [ ] for continuity loss try MSE
 - [ ] for loss try other $\alpha$s
-- [ ] try other soft constraints
 
 ---
 
@@ -96,3 +108,7 @@ YANG, Qidong; SATTIGERI, Prasanna; SZWARCMAN, Daniela; WATSON, Campbell;
 ROLNICK, David. Hard-Constrained Deep Learning for
 Climate Downscaling. 2024. Available from arXiv: 2208.05424 [physics.ao-
 ph].
+6. BEUCLER, Tom; PRITCHARD, Michael; RASP, Stephan; OTT, Jordan; BALDI, Pierre; GENTINE, Pierre. Enforcing Analytic Constraints
+in Neural Networks Emulating Physical Systems. Phys. Rev. Lett. 2021,
+vol. 126, p. 098302. Available from doi: 10.1103/PhysRevLett.126.09
+

@@ -49,11 +49,11 @@
 | #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                        | sources |
 |:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|------------------------------|---------|
 | 1           | -        | 0.03409               | 0.04519                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | baseline                     | [2]     |
-| 10          | -        | 0.02552               | 0.03076                | EDSR, f:128, rb: 64 | 20       | 1e-4 | -      | 1e-5 | baseline                     | [2]     |
+| 10          | -        | **0.02552**           | **0.03076**            | EDSR, f:128, rb: 64 | 20       | 1e-4 | -      | 1e-5 | baseline                     | [2]     |
 
-- lowest validation MAE: 0.03409
-- a little bit less than EDSR and slightly more than SwinIR in [2], but Košťál et al. minimalized climate variables and 
-measured MAE only on pixels, where the observation stations are located.
+- lowest validation MAE: 0.02552, RMSE: 0.03076, architecture with 128 features and 64 residual blocks show clearly better performance
+- RMSE slightly less than EDSR and SwinIR in [2], but Košťál et al. minimalized climate variables and 
+measured RMSE only on pixels, where the observation stations are located.
 
 ## 📝 Notes
 - this experiment differs from [2] by not using climate variables, we only minimize the pixel-wise MAE loss function.
@@ -66,7 +66,7 @@ measured MAE only on pixels, where the observation stations are located.
 - [X] try soft constraining the conservation laws
 - [ ] standardization and converting to K ??
 - [X] try the best EDSR architecture from Košťál et al. [2]
-- [ ] stabilize the learning for the EDSR f: 128, rb: 64 (StepLR 0.5 is too aggressive)
+- [ ] stabilize the learning for the EDSR f: 128, rb: 64
 
 ---
 
