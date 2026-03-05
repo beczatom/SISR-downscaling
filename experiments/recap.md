@@ -11,14 +11,14 @@
 | 5           | 0.01     | 0.03499               | 0.04786                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | Sobel gradient loss                             | [4]     |
 | 6           | 0.01     | 0.03259               | 0.04231                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | G-Loss                                          | [5]     |
 | 7           | 0.01     | 0.03505               | 0.04906                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | gradient variance loss                          | [6]     |
-| 8           | 0.01     | 0.02553               | **0.03055**            | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | GDL; magnitude scaling : no                     | [3]     |
+| 8           | 0.01     | 0.02553               | 0.03055                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | GDL; magnitude scaling : no                     | [3]     |
 | 9           | 0.1      | 0.03801               | 0.05111                | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | GDL; magnitude scaling : no                     | [3]     |
 | 10          | -        | *0.02552*             | *0.03076*              | EDSR, f:128, rb: 64 | 20       | 1e-4 | -      | 1e-5 | baseline                                        | [1]     |
 | 11 (8B)     | 0.01     | 0.04178               | 0.05991                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 | GDL; magnitude scaling : yes                    | [3]     |
 | 12 (2B)     | 0.01     | 0.02564               | 0.03152                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                                                 |         |
 | 13 (3B)     | 0.01     | 0.03700               | 0.05071                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 |                                                 |         |
 | 14 (4B)     | 0.01     | 0.02563               | 0.03145                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                                                 |         |
-| 15 (5B)     | 0.01     | **0.02542**           | 0.03056                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 |                                                 |         |
+| 15 (5B)     | 0.01     | 0.02542               | 0.03056                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 |                                                 |         |
 | 16 (6B)     | 0.01     | 0.02562               | 0.03146                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                                                 |         |
 | 17 (7B)     | 0.01     | 0.02563               | 0.03137                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                                                 |         |
 | 18 (9B)     | 0.01     | 0.02564               | 0.03145                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                                                 |         |
@@ -36,6 +36,12 @@
 | 30 (3G)     | 0.001    | 0.02551               | 0.03087                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss                       |         |
 | 31 (3H)     | 0.01     | 0.02587               | 0.03248                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss; bs = 64              |         |
 | 32 (3I)     | 0.01     | 0.04171               | 0.05634                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss; gradient_clipping(5) |         |
+| 33 (2C2)    | 0.01     | 0.02747               | 0.03698                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft conservation law (MSE version)             |         |
+| 34 (3C2)    | 0.01     | **0.02540**           | **0.03050**            | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss (MSE version)         |         |
+| 35 (5C2)    | 0.01     | 0.02549               | 0.03068                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft Sobel gradient loss (MSE version)          |         |
+| 36 (4C2)    | 0.01     | 0.16962               | 0.28214                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft continuity loss (MSE version)              |         |
+| 37 (6C2)    | 0.01     | 0.03332               | 0.04702                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss (MSE version)                       |         |
+| 38 (8C2)    | 0.01     | 0.04340               | 0.06116                | EDSR, f:128, rb: 64 | 10       | 1e-4 | 0.9    | 1e-5 | soft direction continuity loss (MSE version)    |         |
 
 
 ## Actually soft constraints
@@ -46,7 +52,7 @@
 | 12 (2B)     | 0.01     | 0.02564               | 0.03152                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 | soft conservation law                           |         |
 | 19 (2C)     | 0.01     | 0.03642               | 0.05001                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft conservation law                           |         |
 | 20 (6C)     | 0.01     | 0.02722               | 0.03658                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss                                     |         |
-| 23 (3C)     | 0.01     | **0.02544**           | **0.03062**            | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss                       |         |
+| 23 (3C)     | 0.01     | 0.02544               | 0.03062                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss                       |         |
 | 24 (4C)     | 0.01     | 0.02550               | 0.03078                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft continuity loss                            |         |
 | 25 (5C)     | 0.01     | 0.02742               | 0.03694                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft Sobel gradient loss                        |         |
 | 26 (8C)     | 0.01     | 0.03659               | 0.05057                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft GDL; magnitude scaling : yes               |         |
@@ -56,6 +62,12 @@
 | 30 (3G)     | 0.001    | 0.02551               | 0.03087                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss                       |         |
 | 31 (3H)     | 0.01     | 0.02587               | 0.03248                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss; bs = 64              |         |
 | 32 (3I)     | 0.01     | 0.04171               | 0.05634                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss; gradient_clipping(5) |         |
+| 33 (2C2)    | 0.01     | 0.02747               | 0.03698                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft conservation law (MSE version)             |         |
+| 34 (3C2)    | 0.01     | **0.02540**           | **0.03050**            | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss (MSE version)         |         |
+| 35 (5C2)    | 0.01     | 0.02549               | 0.03068                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft Sobel gradient loss (MSE version)          |         |
+| 36 (4C2)    | 0.01     | 0.16962               | 0.28214                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft continuity loss (MSE version)              |         |
+| 37 (6C2)    | 0.01     | 0.03332               | 0.04702                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss (MSE version)                       |         |
+| 38 (8C2)    | 0.01     | 0.04340               | 0.06116                | EDSR, f:128, rb: 64 | 10       | 1e-4 | 0.9    | 1e-5 | soft direction continuity loss (MSE version)    |         |
 
 ## Hard constraints
 
@@ -81,7 +93,7 @@ Soft constraints are dependent only on input and output of the model, NOT on tar
 - [X] try without StepLR
 - [X] try gradient clipping
 - [ ] try other architecture configurations
-- [ ] in soft constraining try MSE / RMSE approach to penalization
+- [X] in soft constraining try MSE approach to penalization
 - [ ] try to standardize data
 - [X] try bigger batch size
 - [X] try converting those loss functions into soft constraints
