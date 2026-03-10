@@ -38,6 +38,7 @@ data:
 #        sets_years : ["1961", "1962", "1963", "1963", "1964", "1964"]
     path: /mnt/data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/
     sets_years: [ "1961", "1992", "1993", "2002", "2003", "2012" ]
+    scale_factor: 10
 
 
 trainer:

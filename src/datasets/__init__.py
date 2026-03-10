@@ -1,3 +1,3 @@
-from .rekis import ReKISDataModule
+from .rekis import ReKISDataModule, ReKIS
 
-__all__ = ['ReKISDataModule']
+__all__ = ['ReKISDataModule', 'ReKIS']
