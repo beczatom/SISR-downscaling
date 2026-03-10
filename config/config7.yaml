@@ -8,8 +8,14 @@ model:
     loss:
       class_path: loss.LossCombination
       init_args:
-        weights: { mae: 0.99, gvl: 0.01 }
-        scale_factor: 10
+        weights:
+          - 0.99
+          - 0.01
+        losses:
+          - class_path: loss.L1Loss
+          - class_path: loss.GradientVarianceLoss
+            init_args:
+              scale_factor: 10
 
 optimizer:
   class_path: torch.optim.Adam
