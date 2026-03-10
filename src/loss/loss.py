@@ -3,13 +3,39 @@ import torch
 EPS = 1e-8
 
 
+class MSELoss(torch.nn.Module):
+    """
+    Classical MSE loss function.
+    Defined only to be compatible with 3 attribute forward pass.
+    """
+    def __init__(self):
+        super().__init__()
+        self.mse = torch.nn.MSELoss()
+
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        return self.mse(sr, hr)
+
+
+class L1Loss(torch.nn.Module):
+    """
+    Classical MAE loss function.
+    Defined only to be compatible with 3 attribute forward pass.
+    """
+    def __init__(self):
+        super().__init__()
+        self.l1 = torch.nn.L1Loss()
+
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        return self.l1(sr, hr)
+
+
 class ConservationLoss(torch.nn.Module):
     """
     Implements the conservation loss function.
     Measures the difference between the mean of downscaled pixel and the origin pixel.
     """
 
-    def __init__(self, scale_factor: int, penalization : str = 'mae'):
+    def __init__(self, scale_factor: int, penalization: str = 'mae'):
         """
         Initializes the conservation loss.
         Notes:
@@ -29,11 +55,12 @@ class ConservationLoss(torch.nn.Module):
         # will compute the means in downscaled LR pixels
         self.avg_pool = torch.nn.AvgPool2d(kernel_size=scale_factor, stride=scale_factor, padding=0)
 
-    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the conservation loss.
         Args:
             sr: downscaled image
+            hr: unused
             lr: low resolution image
         Returns:
             loss
@@ -70,12 +97,13 @@ class SimpleGradientLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the simple gradient loss.
         Args:
             sr: output image
             hr: target image
+            lr: unused
 
         Returns:
             loss
@@ -99,7 +127,7 @@ class SoftSimpleGradientLoss(torch.nn.Module):
     Modifies the Simple gradient loss function to match the definition of soft constraint.
     """
 
-    def __init__(self, scale_factor: int, penalization : str = 'mae'):
+    def __init__(self, scale_factor: int, penalization: str = 'mae'):
         """
         Initializes the simple gradient loss.
         """
@@ -123,11 +151,12 @@ class SoftSimpleGradientLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the simple gradient loss.
         Args:
             sr: downscaled image
+            hr: unused
             lr: low resolution image
 
         Returns:
@@ -186,12 +215,13 @@ class SobelGradientLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 3, 3))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the Sobel gradient loss.
         Args:
             sr: downscaled image
             hr: target image
+            lr: unused
 
         Returns:
             loss
@@ -245,11 +275,12 @@ class SoftSobelGradientLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 3, 3))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the soft Sobel gradient loss.
         Args:
             sr: downscaled image
+            hr: unused
             lr: low resolution image
 
         Returns:
@@ -311,12 +342,13 @@ class ContinuityLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the continuity loss.
         Args:
             sr: downscaled image
             hr: target image
+            lr: unused
 
         Returns:
             loss
@@ -361,11 +393,12 @@ class SoftContinuityLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the soft continuity loss.
         Args:
             sr: downscaled image
+            hr: unused
             lr: target image
 
         Returns:
@@ -434,12 +467,13 @@ class GLoss(torch.nn.Module):
 
         self.unshuffle = torch.nn.PixelUnshuffle(scale_factor)
 
-    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the G-Loss.
         Args:
             sr: downscaled image
             hr: target image
+            lr: unused
 
         Returns:
             loss
@@ -506,11 +540,12 @@ class SoftGLoss(torch.nn.Module):
 
         self.unshuffle = torch.nn.PixelUnshuffle(scale_factor)
 
-    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the G-Loss.
         Args:
             sr: downscaled image
+            hr: unused
             lr: low resolution image
 
         Returns:
@@ -587,12 +622,13 @@ class GradientVarianceLoss(torch.nn.Module):
 
         self.unfold = torch.nn.Unfold(kernel_size=self.scale_factor, padding=0, stride=self.scale_factor)
 
-    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the GVL.
         Args:
             sr: downscaled image
             hr: target image
+            lr: unused
 
         Returns:
             loss
@@ -659,12 +695,13 @@ class DirectionContinuityLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, hr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the orientation continuity gradient loss.
         Args:
             sr: downscaled image
             hr: target image
+            lr: unused
 
         Returns:
             loss
@@ -699,7 +736,7 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
     Modifies the Direction continuity loss function to match the definition of soft constraint.
     """
 
-    def __init__(self, scale_factor: int, penalization : str = 'mae'):
+    def __init__(self, scale_factor: int, penalization: str = 'mae'):
         """
         Initializes the orientation continuity loss function.
         """
@@ -721,11 +758,12 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
         y_kernel = torch.reshape(y_kernel, (1, 1, 2, 1))
         self.register_buffer('y_kernel', y_kernel)
 
-    def forward(self, sr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         """
         Calculates the orientation continuity gradient loss.
         Args:
             sr: downscaled image
+            hr: unused
             lr: low resolution image
 
         Returns:
@@ -822,36 +860,21 @@ class LossCombination(torch.nn.Module):
     Loss Combination is a loss function, that is a linear combination of some supported loss functions.
     """
 
-    def __init__(self, weights: dict, scale_factor: int):
+    def __init__(self, weights: list[float], losses: list[torch.nn.Module]):
         """
         Initializes the loss.
         Args:
-            weights : dict      the items should be pairs of (type of loss, weight)
-            scale_factor : int  downscaling factor, important for some losses (e.g. ConservationLoss)
+            weights: list[float]            the items should be the weights of losses
+            losses: list[torch.nn.Module]   loss functions
         """
         super().__init__()
-        weights_sum = sum(weights.values())
+        weights_sum = sum(weights)
 
         if weights_sum != 1:
             raise ValueError("Sum of weights must be 1")
 
         self.weights = weights
-        self.scale_factor = scale_factor
-
-        self.mse = torch.nn.MSELoss()
-        self.mae = torch.nn.L1Loss()
-        self.conservation = ConservationLoss(scale_factor, penalization='mse')
-        self.simple_gradient = SimpleGradientLoss()
-        self.continuity = ContinuityLoss()
-        self.sobel_gradient = SobelGradientLoss()
-        self.gloss = GLoss(scale_factor)
-        self.gvl = GradientVarianceLoss(scale_factor)
-        self.dcl = DirectionContinuityLoss()
-        self.soft_simple_gradient = SoftSimpleGradientLoss(scale_factor, penalization='mse')
-        self.soft_continuity = SoftContinuityLoss(scale_factor, penalization='mse')
-        self.soft_sobel_gradient = SoftSobelGradientLoss(scale_factor, penalization='mse')
-        self.soft_gloss = SoftGLoss(scale_factor, penalization='mse')
-        self.soft_dcl = SoftDirectionContinuityLoss(scale_factor, penalization='mse')
+        self.losses = torch.nn.ModuleList(losses)
 
     def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor = None) -> torch.Tensor:
         """
@@ -865,49 +888,7 @@ class LossCombination(torch.nn.Module):
         """
         loss = torch.zeros(1, dtype=sr.dtype, device=sr.device)
 
-        if "mae" in self.weights.keys():
-            loss += self.weights["mae"] * self.mae(sr, hr)
-
-        if "mse" in self.weights.keys():
-            loss += self.weights["mse"] * self.mse(sr, hr)
-
-        if "rmse" in self.weights.keys():
-            loss += self.weights["rmse"] * self.mse(sr, hr).sqrt()
-
-        if "conservation" in self.weights.keys():
-            loss += self.weights["conservation"] * self.conservation(sr, lr)
-
-        if "simple_gradient" in self.weights.keys():
-            loss += self.weights["simple_gradient"] * self.simple_gradient(sr, hr)
-
-        if "continuity" in self.weights.keys():
-            loss += self.weights["continuity"] * self.continuity(sr, hr)
-
-        if "sobel_gradient" in self.weights.keys():
-            loss += self.weights["sobel_gradient"] * self.sobel_gradient(sr, hr)
-
-        if "gloss" in self.weights.keys():
-            loss += self.weights["gloss"] * self.gloss(sr, hr)
-
-        if "gvl" in self.weights.keys():
-            loss += self.weights["gvl"] * self.gvl(sr, hr)
-
-        if "dcl" in self.weights.keys():
-            loss += self.weights["dcl"] * self.dcl(sr, hr)
-
-        if "soft_simple_gradient" in self.weights.keys():
-            loss += self.weights["soft_simple_gradient"] * self.soft_simple_gradient(sr, lr)
-
-        if "soft_continuity" in self.weights.keys():
-            loss += self.weights["soft_continuity"] * self.soft_continuity(sr, lr)
-
-        if "soft_sobel_gradient" in self.weights.keys():
-            loss += self.weights["soft_sobel_gradient"] * self.soft_sobel_gradient(sr, lr)
-
-        if "soft_gloss" in self.weights.keys():
-            loss += self.weights["soft_gloss"] * self.soft_gloss(sr, lr)
-
-        if "soft_dcl" in self.weights.keys():
-            loss += self.weights["soft_dcl"] * self.soft_dcl(sr, lr)
+        for i in range(len(self.weights)):
+            loss += self.weights[i] * self.losses[i](sr, hr, lr)
 
         return loss
