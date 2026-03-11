@@ -2,6 +2,8 @@
 
 ## Results
 
+### Scale factor 10
+
 | #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                                           | sources |
 |:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|-------------------------------------------------|---------|
 | 1           | -        | *0.03409*             | *0.04519*              | EDSR, f:256, rb: 32 | 10       | 1e-4 | -      | -    | baseline                                        | [1]     |
@@ -24,8 +26,8 @@
 | 18 (9B)     | 0.01     | 0.02564               | 0.03145                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.5    | 1e-5 |                                                 |         |
 | 19 (2C)     | 0.01     | 0.03642               | 0.05001                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft conservation law                           | [2]     |
 | 20 (6C)     | 0.01     | 0.02722               | 0.03658                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss                                     |         |
-| 21          | -        | 0.06533               | 0.11418                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | AddCL                                           | [2]     |
-| 22          | -        | 0.15478               | 0.26191                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | MultCL                                          | [2]     |
+| 21 (12A)    | -        | 0.06533               | 0.11418                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | AddCL                                           | [2]     |
+| 22 (13A)    | -        | 0.15478               | 0.26191                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | MultCL                                          | [2]     |
 | 23 (3C)     | 0.01     | 0.02544               | 0.03062                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss                       |         |
 | 24 (4C)     | 0.01     | 0.02550               | 0.03078                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft continuity loss                            |         |
 | 25 (5C)     | 0.01     | 0.02742               | 0.03694                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft Sobel gradient loss                        |         |
@@ -43,8 +45,25 @@
 | 37 (6C2)    | 0.01     | 0.03332               | 0.04702                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss (MSE version)                       |         |
 | 38 (8C2)    | 0.01     | 0.04340               | 0.06116                | EDSR, f:128, rb: 64 | 10       | 1e-4 | 0.9    | 1e-5 | soft direction continuity loss (MSE version)    |         |
 
+### Scale factor 16
 
-## Actually soft constraints
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                             | sources |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|-----------------------------------|---------|
+| 39          | -        | *0.02969*             | *0.04195*              | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | baseline                          | [1]     |
+| 40 (2D)     | 0.01     | 0.04557               | 0.06475                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft conservation law             |         |
+| 41 (3J)     | 0.01     | 0.03226               | 0.04494                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss         |         |
+| 42 (4D)     | 0.01     | 0.03164               | 0.04503                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft continuity loss              |         |
+| 43 (5D)     | 0.01     | **0.02961**           | **0.04149**            | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft Sobel gradient loss          |         |
+| 44 (6D)     | 0.01     | 0.03144               | 0.04396                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss                       |         |
+| 45 (8D)     | 0.01     | 0.03033               | 0.04277                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft GDL; magnitude scaling : yes |         |
+| 46 (12B)    | -        | 0.08312*              | 0.14454*               | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | AddCL                             |         |
+| 47 (13B)    | -        | 0.17129               | 0.29217                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | MultCL                            |         |
+
+
+
+## Soft constraints
+
+### Scale factor 10
 
 | #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                                           | sources |
 |:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|-------------------------------------------------|---------|
@@ -69,12 +88,33 @@
 | 37 (6C2)    | 0.01     | 0.03332               | 0.04702                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss (MSE version)                       |         |
 | 38 (8C2)    | 0.01     | 0.04340               | 0.06116                | EDSR, f:128, rb: 64 | 10       | 1e-4 | 0.9    | 1e-5 | soft direction continuity loss (MSE version)    |         |
 
+### Scale factor 16
+
+| #experiment | $\alpha$ | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes                             | sources |
+|:------------|:---------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|-----------------------------------|---------|
+| 40 (2D)     | 0.01     | 0.04557               | 0.06475                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft conservation law             |         |
+| 41 (3J)     | 0.01     | 0.03226               | 0.04494                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft simple gradient loss         |         |
+| 42 (4D)     | 0.01     | 0.03164               | 0.04503                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft continuity loss              |         |
+| 43 (5D)     | 0.01     | 0.02961               | 0.04149                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft Sobel gradient loss          |         |
+| 44 (6D)     | 0.01     | 0.03144               | 0.04396                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft G-Loss                       |         |
+| 45 (8D)     | 0.01     | 0.03033               | 0.04277                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | soft GDL; magnitude scaling : yes |         |
+
+
 ## Hard constraints
+
+### Scale factor 10
 
 | #experiment | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes  | sources |
 |:------------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|--------|---------|
-| 21          | 0.06533               | 0.11418                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | AddCL  | [2]     |
-| 22          | 0.15478               | 0.26191                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | MultCL | [2]     |
+| 21 (12A)    | 0.06533               | 0.11418                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | AddCL  | [2]     |
+| 22 (13A)    | 0.15478               | 0.26191                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | MultCL | [2]     |
+
+### Scale factor 16
+
+| #experiment | lowest validation MAE | lowest validation RMSE | model               | patience | lr   | StepLR | wd   | notes  | sources |
+|:------------|:----------------------|:-----------------------|:--------------------|----------|------|--------|------|--------|---------|
+| 46 (12B)    | 0.08312*              | 0.14454*               | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | AddCL  | [2]     |
+| 47 (13B)    | 0.17129               | 0.29217                | EDSR, f:128, rb: 64 | 15       | 1e-4 | 0.9    | 1e-5 | MultCL | [2]     |
 
 
 ## 📝 Notes
