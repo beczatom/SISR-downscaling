@@ -582,7 +582,7 @@ class SoftGLoss(torch.nn.Module):
         # regions) of SR pixels downscaled from two LR pixels, where these means and the difference in LR image should
         # be the same
         # mean_sr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
-        mean_sr_d = u_sr_d.mean(dim=1, keepdim=True)
+        mean_sr_d = u_sr_d.mean(dim=1, keepdim=False)
 
         # lr = (B, 1, H / scale_factor, W / scale_factor)
         # lr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
