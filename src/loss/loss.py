@@ -821,11 +821,7 @@ class VarLoss(torch.nn.Module):
     def __init__(self, scale_factor: int, penalization: str = 'mae'):
         super().__init__()
         self.scale_factor = scale_factor
-
-        if penalization == 'mae':
-            self.penalization = torch.nn.L1Loss(reduction='mean')
-        else:
-            self.penalization = torch.nn.MSELoss(reduction='mean')
+        self.penalization = penalization
 
     def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
         b, c, h, w = hr.shape
@@ -837,7 +833,7 @@ class VarLoss(torch.nn.Module):
         hr_var = hr_unfolded.var(dim=2)
         hr_var /= torch.clamp_min(hr_var.sum(dim=0), 1e-6)
 
-        error = self.penalization(sr, hr)
+        error = (hr - sr).abs() if self.penalization == 'mae' else (hr - sr).pow(2)
         mean_error = torch.nn.AvgPool2d(self.scale_factor)(error)
         mean_error = mean_error.reshape(b, div ** 2)
 
