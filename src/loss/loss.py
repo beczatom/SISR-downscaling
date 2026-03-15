@@ -8,6 +8,7 @@ class MSELoss(torch.nn.Module):
     Classical MSE loss function.
     Defined only to be compatible with 3 attribute forward pass.
     """
+
     def __init__(self):
         super().__init__()
         self.mse = torch.nn.MSELoss()
@@ -21,6 +22,7 @@ class L1Loss(torch.nn.Module):
     Classical MAE loss function.
     Defined only to be compatible with 3 attribute forward pass.
     """
+
     def __init__(self):
         super().__init__()
         self.l1 = torch.nn.L1Loss()
@@ -813,6 +815,33 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
         elif self.penalization == 'mse':
             loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).pow(2).mean()
         return loss
+
+
+class VarLoss(torch.nn.Module):
+    def __init__(self, scale_factor: int, penalization: str = 'mae'):
+        super().__init__()
+        self.scale_factor = scale_factor
+
+        if penalization == 'mae':
+            self.penalization = torch.nn.L1Loss(reduction='mean')
+        else:
+            self.penalization = torch.nn.MSELoss(reduction='mean')
+
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        b, c, h, w = hr.shape
+
+        div = h // self.scale_factor
+
+        hr_unfolded = hr.unfold(2, self.scale_factor, self.scale_factor).unfold(3, self.scale_factor, self.scale_factor)
+        hr_unfolded = hr_unfolded.reshape(b, div ** 2, self.scale_factor ** 2)
+        hr_var = hr_unfolded.var(dim=2)
+        hr_var /= torch.clamp_min(hr_var.sum(dim=0), 1e-6)
+
+        error = self.penalization(sr, hr)
+        mean_error = torch.nn.AvgPool2d(self.scale_factor)(error)
+        mean_error = mean_error.reshape(b, div ** 2)
+
+        return (hr_var * mean_error).sum(dim=1).mean()
 
 
 # if __name__ == '__main__':
