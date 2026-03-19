@@ -9,8 +9,8 @@ import rasterio
 import torch
 import xarray
 
-# Average resampling used to reduce resolution
-RESAMPLING = rasterio.enums.Resampling.average
+# Cubic spline resampling used to reduce resolution
+RESAMPLING = rasterio.enums.Resampling.cubic_spline
 
 
 class ReKIS(torch.utils.data.Dataset):
@@ -69,7 +69,7 @@ class ReKISDataModule(lightning.LightningDataModule):
         """
         Loads, splits and saves data.
         """
-        variable = "TM"  # TODO
+        variable = "TM"
         Y = xarray.open_mfdataset(self.path + variable + "/*.nc", decode_coords="all")
         Y = Y[variable]
         self.trainset = ReKIS(Y.sel(time=slice(self.sets_years[0], self.sets_years[1])), self.scale_factor)
