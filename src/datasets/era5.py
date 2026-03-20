@@ -1,20 +1,15 @@
-"""
-Based on: Ondřej Podsztavek
-Source: https://github.com/podondra/downscaling/
-Dataset division with parameter was added.
-"""
 
 import lightning
 import rasterio
 import torch
 import xarray
 
-# Cubic spline resampling used to reduce resolution
-RESAMPLING = rasterio.enums.Resampling.cubic_spline
+# Average resampling used to reduce resolution
+RESAMPLING = rasterio.enums.Resampling.average
 
 
-class ReKIS(torch.utils.data.Dataset):
-    """Dataset for ReKIS."""
+class Era5(torch.utils.data.Dataset):
+    """Dataset for ERA5."""
 
     def __init__(self, Y: xarray.DataArray, scale_factor : int):
         """
@@ -26,15 +21,11 @@ class ReKIS(torch.utils.data.Dataset):
         """
         self.scale_factor = scale_factor
 
-        Y = Y.isel(easting=slice(0, 400), northing=slice(0, 400))
-        # TODO verify order of dimensions
-        # spatial dimensions are set here because DataArray.sel loses them
-        Y.rio.set_spatial_dims("easting", "northing")
+        Y = Y.isel(latitude=slice(0, 50), longitude=slice(0, 90))
 
-        # TODO how is it with resolution/shape?
-        resolution = 1000 * self.scale_factor
+        shape = (50 // self.scale_factor, 90 // self.scale_factor)
         X = Y.rio.reproject(
-            Y.rio.crs, resolution=(resolution, resolution), resampling=RESAMPLING
+            Y.rio.crs, shape=shape, resampling=RESAMPLING
         )
         self.X = torch.from_numpy(X.values).unsqueeze(1)
         self.Y = torch.from_numpy(Y.values).unsqueeze(1)
@@ -47,15 +38,15 @@ class ReKIS(torch.utils.data.Dataset):
         return self.X[index], self.Y[index]
 
 
-class ReKISDataModule(lightning.LightningDataModule):
-    """DataModule for ReKIS."""
+class Era5DataModule(lightning.LightningDataModule):
+    """DataModule for Era5."""
 
     def __init__(self, batch_size: int, path: str, sets_years: list, scale_factor : int):
         """
         Initialize the DataModule.
         Args:
             batch_size : int
-            path : str              path to ReKIS
+            path : str              path to Era5
             sets_years : list[int]  division of dataset into train, val and test sets
             scale_factor : int
         """
@@ -69,12 +60,14 @@ class ReKISDataModule(lightning.LightningDataModule):
         """
         Loads, splits and saves data.
         """
-        variable = "TM"
-        Y = xarray.open_mfdataset(self.path + variable + "/*.nc", decode_coords="all", decode_timedelta=False)
-        Y = Y[variable]
-        self.trainset = ReKIS(Y.sel(time=slice(self.sets_years[0], self.sets_years[1])), self.scale_factor)
-        self.valset = ReKIS(Y.sel(time=slice(self.sets_years[2], self.sets_years[3])), self.scale_factor)
-        self.testset = ReKIS(Y.sel(time=slice(self.sets_years[4], self.sets_years[5])), self.scale_factor)
+        Y = xarray.open_mfdataset(self.path, decode_coords="all", decode_timedelta=False)
+        Y = Y.rio.write_crs('EPSG:4326')
+        Y = Y.isel(latitude=slice(0, 50), longitude=slice(0, 90))
+        Y = Y.t2m.mean(dim="step") - 273.15
+
+        self.trainset = Era5(Y.sel(time=slice(self.sets_years[0], self.sets_years[1])), self.scale_factor)
+        self.valset = Era5(Y.sel(time=slice(self.sets_years[2], self.sets_years[3])), self.scale_factor)
+        self.testset = Era5(Y.sel(time=slice(self.sets_years[4], self.sets_years[5])), self.scale_factor)
 
     def train_dataloader(self) -> torch.utils.data.DataLoader:
         """Returns a DataLoader for the training set."""
