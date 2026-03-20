@@ -1,17 +1,16 @@
 import torch
 
-from .edsr import EDSR
 from .model import AbstractModel
 
 
 class ConstraintLayer(torch.nn.Module):
     """
-    Residual block of the EDSR model.
+    Abstract constraint layer.
     """
 
     def __init__(self, scale_factor: int):
         """
-        Initialize the residual block.
+        Initialize the constraint layer.
         """
         super().__init__()
         self.scale_factor = scale_factor
@@ -86,38 +85,26 @@ class SmConstraintLayer(ConstraintLayer):
         return y_tilde_exp.mul(mean_diff_upscaled)
 
 
-class ConstrainedEDSR(AbstractModel):
+class ConstrainedModel(AbstractModel):
     """
-    Hard constrained EDSR.
-    See Also: src/models/edsr.py
+    Hard constrained model.
     """
 
-    def __init__(self,
-                 channels: int,
-                 scale_factor: int,
-                 features: int,
-                 residual_blocks: int,
-                 loss: torch.nn.Module,
-                 constraint: ConstraintLayer):
+    def __init__(self, model: AbstractModel, constraint: ConstraintLayer):
         """
-        Initialize the hard constrained EDSR model.
+        Initializes the hard constrained model.
         Args:
-            channels : int                  Number of channels in the input image
-            scale_factor : int              Downscaling factor
-            features : int                  Number of channels in residual blocks
-            residual_blocks : int           Number of residual blocks
-            loss : torch.nn.Module          Loss function
-            constraint : ConstraintLayer    Hard constraint layer
+            model : AbstractModel           model which output will be the input into constraint layer
+            constraint : ConstraintLayer    hard constraint layer
         """
         super().__init__()
-        self.loss = loss
-
-        self.model = EDSR(channels, scale_factor, features, residual_blocks, self.loss)
+        self.model = model
         self.constraint = constraint
+        self.loss = self.model.loss
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass of the hard constrained EDSR model.
+        Forward pass of the hard constrained model.
         Args:
             x : torch.Tensor    Input image
         Returns:
