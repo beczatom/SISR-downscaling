@@ -1,0 +1,19 @@
+model:
+  class_path: models.EDSR
+  init_args:
+    channels: 1
+    scale_factor: 10
+    features: 64
+    residual_blocks: 4
+    loss:
+      class_path: loss.LossCombination
+      init_args:
+        weights:
+        - 1.0
+        losses:
+        - class_path: loss.L1Loss
+constraint:
+  class_path: models.AddConstraintLayer
+  init_args:
+    scale_factor: 10
+_instantiator: lightning.pytorch.cli.instantiate_module
