@@ -12,19 +12,11 @@ model:
           - 1
         losses:
           - class_path: loss.L1Loss
-
 optimizer:
   class_path: torch.optim.Adam
   init_args:
     lr: 1e-4
     weight_decay: 1e-5
-
-lr_scheduler:
-  class_path: torch.optim.lr_scheduler.StepLR
-  init_args:
-    step_size: 50
-    gamma: 0.9
-
 data:
   class_path: datasets.ReKISDataModule
   init_args:
@@ -35,7 +27,6 @@ data:
     sets_years: [ "1961", "1992", "1993", "2002", "2003", "2012" ]
     scale_factor: 16
 
-
 trainer:
   accelerator: gpu
   callbacks:
@@ -43,17 +34,15 @@ trainer:
       init_args:
         monitor: val/rmse
         mode: min
-        patience: 15
+        patience: 10
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: val/rmse
         mode: min
-
   deterministic: true
   log_every_n_steps: 1
   logger:
     class_path: lightning.pytorch.loggers.TensorBoardLogger
     init_args:
       save_dir: logs
-
   max_epochs: -1

@@ -9,8 +9,8 @@ import rasterio
 import torch
 import xarray
 
-# Cubic spline resampling used to reduce resolution
-RESAMPLING = rasterio.enums.Resampling.cubic_spline
+# Average resampling used to reduce resolution
+RESAMPLING = rasterio.enums.Resampling.average
 
 
 class ReKIS(torch.utils.data.Dataset):

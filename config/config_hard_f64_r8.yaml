@@ -26,11 +26,6 @@ optimizer:
     lr: 1e-4
     weight_decay: 1e-5
 
-lr_scheduler:
-  class_path: torch.optim.lr_scheduler.StepLR
-  init_args:
-    step_size: 50
-    gamma: 0.9
 
 data:
   class_path: datasets.ReKISDataModule
@@ -50,7 +45,7 @@ trainer:
       init_args:
         monitor: val/rmse
         mode: min
-        patience: 15
+        patience: 10
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: val/rmse
