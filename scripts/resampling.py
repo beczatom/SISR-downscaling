@@ -15,12 +15,18 @@ RESAMPLINGS = {
 }
 
 LOSSES = {
-    'conservation' : loss.ConservationLoss(16),
-    'simple gradient' : loss.SoftSimpleGradientLoss(16),
-    'continuity' : loss.SoftContinuityLoss(16),
-    'sobel' : loss.SoftSobelGradientLoss(16),
-    'G-loss' : loss.SoftGLoss(16),
-    'direction continuity' : loss.SoftDirectionContinuityLoss(16),
+    'conservation mae' : loss.ConservationLoss(16, 'mae'),
+    'conservation mse' : loss.ConservationLoss(16, 'mse'),
+    'simple gradient mae' : loss.SoftSimpleGradientLoss(16, 'mae'),
+    'simple gradient mse' : loss.SoftSimpleGradientLoss(16, 'mse'),
+    'continuity mae' : loss.SoftContinuityLoss(16, 'mae'),
+    'continuity mse' : loss.SoftContinuityLoss(16, 'mse'),
+    'Sobel mae' : loss.SoftSobelGradientLoss(16, 'mae'),
+    'Sobel mse' : loss.SoftSobelGradientLoss(16, 'mse'),
+    'G-loss mae' : loss.SoftGLoss(16, 'mae'),
+    'G-loss mse' : loss.SoftGLoss(16, 'mse'),
+    'direction continuity mae' : loss.SoftDirectionContinuityLoss(16, 'mae'),
+    'direction continuity mse' : loss.SoftDirectionContinuityLoss(16, 'mse'),
 }
 
 class ReKIS(torch.utils.data.Dataset):
