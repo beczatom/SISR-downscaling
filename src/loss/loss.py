@@ -31,6 +31,15 @@ class L1Loss(torch.nn.Module):
         return self.l1(sr, hr)
 
 
+def dilated_derivative(image: torch.Tensor, derivative_kernels: list[torch.Tensor] | torch.Tensor, scale_factor: int):
+    res = []
+    for ker in derivative_kernels:
+        derivative = torch.conv2d(input=image, weight=ker, dilation=(scale_factor, scale_factor))
+        mean_derivative = torch.nn.functional.avg_pool2d(derivative, kernel_size=scale_factor, stride=scale_factor)
+        res.append(mean_derivative)
+    return res
+
+
 class ConservationLoss(torch.nn.Module):
     """
     Implements the conservation loss function.
@@ -165,30 +174,15 @@ class SoftSimpleGradientLoss(torch.nn.Module):
             loss
         """
 
-        # SR unshuffle
-        u_sr = self.pixel_unshuffle(sr)
-        _, _, h, w = u_sr.shape
+        # SR dilated derivatives
+        sr_d = dilated_derivative(sr, [self.x_kernel, self.y_kernel], self.scale_factor)
 
-        u_sr = u_sr.reshape(-1, 1, h, w)
-
-        # SR derivatives
-        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
-        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
-
-        # SR derivatives reshape
-        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h, w - 1)
-        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 1, w)
-
-        # SR mean derivatives
-        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
-        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
-
-        # HR derivatives
+        # LR derivatives
         lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
         lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
 
         # MAE/MSE of dx and dy
-        loss = self.penalization(mean_sr_dx, lr_dx) + self.penalization(mean_sr_dy, lr_dy)
+        loss = self.penalization(sr_d[0], lr_dx) + self.penalization(sr_d[1], lr_dy)
         return loss
 
 
@@ -289,23 +283,8 @@ class SoftSobelGradientLoss(torch.nn.Module):
             loss
         """
 
-        # SR unshuffle
-        u_sr = self.pixel_unshuffle(sr)
-        _, _, h, w = u_sr.shape
-
-        u_sr = u_sr.reshape(-1, 1, h, w)
-
         # SR derivatives
-        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
-        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
-
-        # SR reshaping
-        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h - 2, w - 2)
-        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 2, w - 2)
-
-        # SR mean derivatives
-        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
-        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
+        sr_d = dilated_derivative(sr, [self.x_kernel, self.y_kernel], self.scale_factor)
 
         # LR derivatives
         lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
@@ -313,7 +292,7 @@ class SoftSobelGradientLoss(torch.nn.Module):
 
         # LR and SR gradient calculation
         lr_grad = (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()
-        sr_grad = (mean_sr_dx.pow(2) + mean_sr_dy.pow(2) + EPS).sqrt()
+        sr_grad = (sr_d[0].pow(2) + sr_d[1].pow(2) + EPS).sqrt()
 
         # MAE/MSE of gradients
         return self.penalization(sr_grad, lr_grad)
@@ -407,22 +386,11 @@ class SoftContinuityLoss(torch.nn.Module):
             loss
         """
 
-        # SR unshuffle
-        u_sr = self.pixel_unshuffle(sr)
-        _, _, h, w = u_sr.shape
-        u_sr = u_sr.reshape(-1, 1, h, w)
-
         # SR derivatives
-        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
-        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
+        sr_d = dilated_derivative(sr, [self.x_kernel, self.y_kernel], self.scale_factor)
 
-        # SR derivatives reshaping
-        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h, w - 1)
-        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 1, w)
-
-        # SR derivatives mean
-        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
-        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
+        dilated_sr_dx = sr_d[0]
+        dilated_sr_dy = sr_d[1]
 
         # LR derivatives
         lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
@@ -431,9 +399,9 @@ class SoftContinuityLoss(torch.nn.Module):
         # AE/SE of sums of derivatives
         loss = torch.zeros(1, dtype=sr.dtype, device=sr.device)
         if self.penalization == 'mae':
-            loss = (mean_sr_dx.abs().mean() + mean_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
+            loss = (dilated_sr_dx.abs().mean() + dilated_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
         elif self.penalization == 'mse':
-            loss = (mean_sr_dx.pow(2).sum() + mean_sr_dy.pow(2).sum() - lr_dx.pow(2).sum() - lr_dy.pow(2).sum()).abs()
+            loss = (dilated_sr_dx.pow(2).sum() + dilated_sr_dy.pow(2).sum() - lr_dx.pow(2).sum() - lr_dy.pow(2).sum()).abs()
 
         return loss
 
@@ -554,44 +522,15 @@ class SoftGLoss(torch.nn.Module):
             loss
         """
 
-        # we will do gradients on distance of scale_factor
-        # sr = (B, 1, H, W)
-
-        # a particular image is divided into pieces, where in all scale_factor^2 channels, there are
-        # H / scale_factor x W / scale_factor pixels, originally in distance of scale_factor from each other
-        # u_sr = (B, scale_factor^2, H / scale_factor, W / scale_factor)
-        u_sr = self.unshuffle(sr)
-
-        _, _, h, w = u_sr.shape
-
-        # for easier convolution, we will move the channels into batches
-        # u_sr = (B * scale_factor^2, 1, H / scale_factor, W / scale_factor)
-        u_sr = u_sr.reshape(-1, 1, h, w)
-
-        # now the gradient calculation takes place
-        # for each batch we will now inspect how the value changed in 8 directions
-        # this corresponds to 8 directions in distance scale_factor in original image
-        # u_sr_d = (B * scale_factor^2, 8, H / scale_factor - 2, W / scale_factor - 2)
-        u_sr_d = torch.conv2d(u_sr, self.kernel, padding=0)
-
-        # now for each image, there are scale_factor^2 images with stride scale_factor
-        # and 8 gradients for 8 different directions
-        # u_sr_d = (B, scale_factor^2, 8, H / scale_factor - 2, W / scale_factor - 2)
-        u_sr_d = u_sr_d.view(-1, self.scale_factor ** 2, 8, h - 2, w - 2)
-
-        # we will calculate the mean differences through dimension 1, that leads to 8 channels for 8 direction,
-        # where in each direction we have the mean difference between two groups (scale_factor x scale_factor
-        # regions) of SR pixels downscaled from two LR pixels, where these means and the difference in LR image should
-        # be the same
-        # mean_sr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
-        mean_sr_d = u_sr_d.mean(dim=1, keepdim=False)
+        # SR derivative
+        sr_d = dilated_derivative(sr, self.kernel.unsqueeze(0), self.scale_factor)[0].detach()
 
         # lr = (B, 1, H / scale_factor, W / scale_factor)
         # lr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
         lr_d = torch.conv2d(lr, self.kernel, padding=0)
 
         # MAE/MSE of derivatives
-        return self.penalization(mean_sr_d, lr_d)
+        return self.penalization(sr_d, lr_d)
 
 
 # Abrahamyan. 2022. Gradient Variance Loss for Structure-Enhanced Image Super-Resolution.
@@ -772,26 +711,13 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
             loss
         """
 
-        # SR unshuffle
-        u_sr = self.pixel_unshuffle(sr)
+        sr_d = dilated_derivative(sr, [self.x_kernel, self.y_kernel], self.scale_factor)
 
-        # unshuffled SR reshape
-        _, _, h, w = u_sr.shape
-        u_sr = u_sr.reshape(-1, 1, h, w)
+        sr_dx = sr_d[0]
+        sr_dx = sr_dx[:, :, :-1, :]
 
-        # unshuffled SR derivatives
-        u_sr_dx = torch.conv2d(u_sr, self.x_kernel, padding=0)
-        u_sr_dy = torch.conv2d(u_sr, self.y_kernel, padding=0)
-
-        # dropping the last row to match sizes with dy
-        u_sr_dx = u_sr_dx.view(-1, self.scale_factor ** 2, h, w - 1)
-        mean_sr_dx = torch.mean(u_sr_dx, dim=1, keepdim=True)
-        mean_sr_dx = mean_sr_dx[:, :, :-1, :]
-
-        # dropping the last column to match sizes with dx
-        u_sr_dy = u_sr_dy.view(-1, self.scale_factor ** 2, h - 1, w)
-        mean_sr_dy = torch.mean(u_sr_dy, dim=1, keepdim=True)
-        mean_sr_dy = mean_sr_dy[:, :, :, :-1]
+        sr_dy = sr_d[1]
+        sr_dy = sr_dy[:, :, :, :-1]
 
         # LR derivatives
         lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
@@ -802,7 +728,7 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
         lr_dy = lr_dy[:, :, :, :-1]
 
         # SR and LR gradients
-        sr_grad = torch.stack([mean_sr_dx, mean_sr_dy], dim=1)
+        sr_grad = torch.stack([sr_dx, sr_dy], dim=1)
         lr_grad = torch.stack([lr_dx, lr_dy], dim=1)
 
         # cosine similarity
