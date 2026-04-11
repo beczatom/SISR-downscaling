@@ -43,7 +43,7 @@ trainer:
       init_args:
         monitor: val/rmse
         mode: min
-        patience: 10
+        patience: 15
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: val/rmse
