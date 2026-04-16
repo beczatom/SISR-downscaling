@@ -401,7 +401,7 @@ class SoftContinuityLoss(torch.nn.Module):
         if self.penalization == 'mae':
             loss = (dilated_sr_dx.abs().mean() + dilated_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
         elif self.penalization == 'mse':
-            loss = (dilated_sr_dx.pow(2).sum() + dilated_sr_dy.pow(2).sum() - lr_dx.pow(2).sum() - lr_dy.pow(2).sum()).abs()
+            loss = (dilated_sr_dx.pow(2).mean() + dilated_sr_dy.pow(2).mean() - lr_dx.pow(2).mean() - lr_dy.pow(2).mean()).abs()
 
         return loss
 
@@ -523,7 +523,7 @@ class SoftGLoss(torch.nn.Module):
         """
 
         # SR derivative
-        sr_d = dilated_derivative(sr, self.kernel.unsqueeze(0), self.scale_factor)[0].detach()
+        sr_d = dilated_derivative(sr, self.kernel.unsqueeze(0), self.scale_factor)[0]
 
         # lr = (B, 1, H / scale_factor, W / scale_factor)
         # lr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
@@ -742,6 +742,69 @@ class SoftDirectionContinuityLoss(torch.nn.Module):
             loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).pow(2).mean()
         return loss
 
+
+class SoftSobelDirectionContinuityLoss(torch.nn.Module):
+    """
+    Modifies the Direction continuity loss function to match the definition of soft constraint.
+    """
+
+    def __init__(self, scale_factor: int, penalization: str = 'mae'):
+        """
+        Initializes the orientation continuity loss function.
+        """
+        super().__init__()
+
+        self.scale_factor = scale_factor
+
+        self.penalization = penalization
+
+        self.pixel_unshuffle = torch.nn.PixelUnshuffle(scale_factor)
+
+        # dx
+        x_kernel = torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32)
+        x_kernel = torch.reshape(x_kernel, (1, 1, 3, 3))
+        self.register_buffer('x_kernel', x_kernel)
+
+        # dy
+        y_kernel = torch.tensor([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=torch.float32)
+        y_kernel = torch.reshape(y_kernel, (1, 1, 3, 3))
+        self.register_buffer('y_kernel', y_kernel)
+
+    def forward(self, sr: torch.Tensor, hr: torch.Tensor, lr: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the orientation continuity gradient loss.
+        Args:
+            sr: downscaled image
+            hr: unused
+            lr: low resolution image
+
+        Returns:
+            loss
+        """
+
+        sr_d = dilated_derivative(sr, [self.x_kernel, self.y_kernel], self.scale_factor)
+
+        sr_dx = sr_d[0]
+        sr_dy = sr_d[1]
+
+        # LR derivatives
+        lr_dx = torch.conv2d(lr, self.x_kernel, padding=0)
+        lr_dy = torch.conv2d(lr, self.y_kernel, padding=0)
+
+        # SR and LR gradients
+        sr_grad = torch.stack([sr_dx, sr_dy], dim=1)
+        lr_grad = torch.stack([lr_dx, lr_dy], dim=1)
+
+        # cosine similarity
+        sim = torch.cosine_similarity(sr_grad, lr_grad, dim=1)
+
+        # scaling with magnitude, we don't want to punish large differences in angles when the gradient magnitude is close to zero
+        loss = torch.zeros(1, dtype=sr.dtype, device=sr.device)
+        if self.penalization == 'mae':
+            loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).abs().mean()
+        elif self.penalization == 'mse':
+            loss = ((1 - sim) * (lr_dx.pow(2) + lr_dy.pow(2) + EPS).sqrt()).pow(2).mean()
+        return loss
 
 class VarLoss(torch.nn.Module):
     def __init__(self, scale_factor: int, penalization: str = 'mae'):
