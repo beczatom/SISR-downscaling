@@ -9,14 +9,14 @@ model:
       class_path: loss.LossCombination
       init_args:
         weights:
-          - 0.9999
+          - 0.999999
           - 0.0001
         losses:
           - class_path: loss.L1Loss
           - class_path: loss.SoftSobelGradientLoss
             init_args:
               scale_factor: 16
-              penalization: 'mae'
+              penalization: 'mse'
 
 optimizer:
   class_path: torch.optim.Adam
