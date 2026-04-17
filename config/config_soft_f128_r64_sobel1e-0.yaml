@@ -14,7 +14,7 @@ model:
           - class_path: loss.SoftSobelGradientLoss
             init_args:
               scale_factor: 16
-              penalization: 'mse'
+              penalization: 'mae'
 
 optimizer:
   class_path: torch.optim.Adam
