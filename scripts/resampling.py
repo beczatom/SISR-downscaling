@@ -54,8 +54,8 @@ class ReKIS(torch.utils.data.Dataset):
         return self.X[index], self.Y[index]
 
 if __name__ == "__main__":
-    # PATH = '/mnt/data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
-    PATH = '/home/tomas/ctu/current/rci_data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
+    PATH = '/mnt/data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
+    # PATH = '/home/tomas/ctu/current/rci_data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
     print(PATH + "TM/*.nc")
     Y_raw = xarray.open_mfdataset(PATH + "TM/*.nc", decode_coords="all")
     Y_raw = Y_raw["TM"]
