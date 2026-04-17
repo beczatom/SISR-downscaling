@@ -27,6 +27,8 @@ LOSSES = {
     'G-loss mse' : loss.SoftGLoss(16, 'mse'),
     'direction continuity mae' : loss.SoftDirectionContinuityLoss(16, 'mae'),
     'direction continuity mse' : loss.SoftDirectionContinuityLoss(16, 'mse'),
+    'Sobel direction mae' : loss.SoftSobelDirectionContinuityLoss(16, 'mae'),
+    'Sobel direction mse' : loss.SoftSobelDirectionContinuityLoss(16, 'mse'),
 }
 
 class ReKIS(torch.utils.data.Dataset):
@@ -52,13 +54,14 @@ class ReKIS(torch.utils.data.Dataset):
         return self.X[index], self.Y[index]
 
 if __name__ == "__main__":
-    PATH = '/mnt/data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
-
+    # PATH = '/mnt/data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
+    PATH = '/home/tomas/ctu/current/rci_data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
+    print(PATH + "TM/*.nc")
     Y_raw = xarray.open_mfdataset(PATH + "TM/*.nc", decode_coords="all")
     Y_raw = Y_raw["TM"]
 
     for resampling_name, resampling in RESAMPLINGS.items():
-        dataset = ReKIS(Y_raw.sel(time=slice('1961', '1992')).copy(), 16, resampling=resampling)
+        dataset = ReKIS(Y_raw.sel(time=slice('1961', '1962')).copy(), 16, resampling=resampling)
 
         X, Y = dataset.X.reshape((-1, 1, 400 // 16, 400 // 16)), dataset.Y.reshape((-1, 1, 400, 400))
 
