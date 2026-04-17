@@ -61,7 +61,7 @@ if __name__ == "__main__":
     Y_raw = Y_raw["TM"]
 
     for resampling_name, resampling in RESAMPLINGS.items():
-        dataset = ReKIS(Y_raw.sel(time=slice('1961', '1962')).copy(), 16, resampling=resampling)
+        dataset = ReKIS(Y_raw.sel(time=slice('1961', '1992')).copy(), 16, resampling=resampling)
 
         X, Y = dataset.X.reshape((-1, 1, 400 // 16, 400 // 16)), dataset.Y.reshape((-1, 1, 400, 400))
 
