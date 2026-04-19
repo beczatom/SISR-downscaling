@@ -1,22 +1,24 @@
 model:
-  class_path: models.EDSR
+  class_path: models.ConstrainedModel
   init_args:
-    channels: 1
-    scale_factor: 2
-    features: 128
-    residual_blocks: 64
-    loss:
-      class_path: loss.LossCombination
+    model:
+      class_path: models.EDSR
       init_args:
-        weights:
-          - 0.9999
-          - 0.0001
-        losses:
-          - class_path: loss.L1Loss
-          - class_path: loss.ConservationLoss
-            init_args:
-              scale_factor: 2
-              penalization: 'mae'
+        channels: 1
+        scale_factor: 16
+        features: 128
+        residual_blocks: 64
+        loss:
+          class_path: loss.LossCombination
+          init_args:
+            weights:
+              - 1
+            losses:
+              - class_path: loss.L1Loss
+    constraint:
+      class_path: models.AddConstraintLayer
+      init_args:
+        scale_factor: 16
 
 optimizer:
   class_path: torch.optim.Adam
@@ -24,15 +26,16 @@ optimizer:
     lr: 1e-4
     weight_decay: 1e-5
 
+
 data:
   class_path: datasets.ReKISDataModule
   init_args:
-    batch_size: 16
+    batch_size: 32
 #    path: /home/tomas/ctu/current/rci_data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/
-#    sets_years : ["1961", "1962", "1963", "1963", "1964", "1964"]
+#    sets_years: [ "1961", "1962", "1963", "1963", "1964", "1964" ]
     path: /mnt/data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/
     sets_years: [ "1961", "1992", "1993", "2002", "2003", "2012" ]
-    scale_factor: 2
+    scale_factor: 16
 
 
 trainer:
@@ -42,7 +45,7 @@ trainer:
       init_args:
         monitor: val/rmse
         mode: min
-        patience: 15
+        patience: 10
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: val/rmse
