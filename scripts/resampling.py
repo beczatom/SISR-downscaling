@@ -1,3 +1,6 @@
+"""
+Counts the physical violation for different soft constraints and resampling methods.
+"""
 
 import torch
 import xarray
@@ -32,8 +35,18 @@ LOSSES = {
 }
 
 class ReKIS(torch.utils.data.Dataset):
-
+    """
+    Almost the same as in datasets.rekis, however this offers different resampling methods
+    """
     def __init__(self, Y: xarray.DataArray, scale_factor : int, resampling):
+        """
+        Initialize the dataset with target.
+        The target is upscaled by scale_factor using the resampling method.
+        Args:
+            Y : xarray.DataArray    target variable
+            scale_factor : int
+            resampling
+        """
         self.scale_factor = scale_factor
 
         Y = Y.isel(easting=slice(0, 400), northing=slice(0, 400))
@@ -61,8 +74,10 @@ if __name__ == "__main__":
     Y_raw = Y_raw["TM"]
 
     for resampling_name, resampling in RESAMPLINGS.items():
+        # only the training set
         dataset = ReKIS(Y_raw.sel(time=slice('1961', '1992')).copy(), 16, resampling=resampling)
 
+        # only scale factor 16
         X, Y = dataset.X.reshape((-1, 1, 400 // 16, 400 // 16)), dataset.Y.reshape((-1, 1, 400, 400))
 
         print(50 * '=')
@@ -71,8 +86,10 @@ if __name__ == "__main__":
         X_upscaled = torch.kron(X, torch.ones(16, 16))
         print(X_upscaled.shape)
 
+        # RMSE and MAE if the LR would be enlarged - not so important
         print('RMSE:', ((X_upscaled - Y) ** 2).mean().sqrt())
         print('MAE:', (X_upscaled - Y).abs().mean())
 
+        # the important part - for each resampling method count all the different constraint losses
         for loss_name, loss_fn in LOSSES.items():
             print(f'{loss_name}: {loss_fn(Y, None, X)}')

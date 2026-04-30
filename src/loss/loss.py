@@ -525,12 +525,52 @@ class SoftGLoss(torch.nn.Module):
         # SR derivative
         sr_d = dilated_derivative(sr, self.kernel.unsqueeze(0), self.scale_factor)[0]
 
-        # lr = (B, 1, H / scale_factor, W / scale_factor)
-        # lr_d = (B, 8, H / scale_factor - 2, W / scale_factor - 2)
+        print(sr_d.shape)
+
         lr_d = torch.conv2d(lr, self.kernel, padding=0)
 
         # MAE/MSE of derivatives
         return self.penalization(sr_d, lr_d)
+
+
+if __name__ == '__main__':
+    # sgl = GradientVarianceLoss(scale_factor=3)
+    # y = torch.tensor([[[[0., 0., 0., 0., 0., 0.],
+    #       [1., 1., 0., 1., 1., 0.],
+    #       [0., 1., 1., 0., 0., 0.],
+    #       [0., 1., 1., 1., 1., 0.],
+    #       [0., 1., 1., 1., 0., 1.],
+    #       [1., 1., 1., 0., 0., 0.]]]]).float()
+    # y_hat = torch.tensor([[[[0., 1., 1., 1., 1., 1.],
+    #       [0., 0., 1., 1., 1., 0.],
+    #       [1., 0., 0., 1., 1., 1.],
+    #       [1., 1., 1., 0., 0., 0.],
+    #       [0., 1., 1., 1., 0., 0.],
+    #       [0., 0., 1., 1., 0., 1.]]]]).float()
+    #
+    loss = SoftGLoss(3)
+
+    x = torch.randn(2, 1, 4, 4)
+    y_hat = torch.randn(2, 1, 12, 12)
+
+    # x = torch.tensor([[[[1, 2, 3], [4, 5, 6], [7, 8, 9]]], [[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]]).float()
+    # y_hat = torch.tensor([[[[1, 2, 3, 4, 5, 6],
+    #                         [7, 1, 2, 3, 4, 5],
+    #                         [6, 7, 1, 2, 3, 4],
+    #                         [5, 6, 7, 1, 2, 3],
+    #                         [4, 5, 6, 7, 1, 2],
+    #                         [3, 4, 5, 6, 7, 1]]],
+    #                       [[[1, 1, 2, 2, 3, 3],
+    #                         [1, 1, 2, 2, 3, 3],
+    #                         [4, 4, 5, 5, 6, 6],
+    #                         [4, 4, 5, 5, 6, 6],
+    #                         [7, 7, 8, 8, 9, 9],
+    #                         [7, 7, 8, 8, 9, 9]]]]).float()
+
+    print(loss(y_hat, None, x))
+
+    print(x)
+    print(y_hat)
 
 
 # Abrahamyan. 2022. Gradient Variance Loss for Structure-Enhanced Image Super-Resolution.
@@ -829,44 +869,7 @@ class VarLoss(torch.nn.Module):
         return (hr_var * mean_error).sum(dim=1).mean()
 
 
-# if __name__ == '__main__':
-#     # sgl = GradientVarianceLoss(scale_factor=3)
-#     # y = torch.tensor([[[[0., 0., 0., 0., 0., 0.],
-#     #       [1., 1., 0., 1., 1., 0.],
-#     #       [0., 1., 1., 0., 0., 0.],
-#     #       [0., 1., 1., 1., 1., 0.],
-#     #       [0., 1., 1., 1., 0., 1.],
-#     #       [1., 1., 1., 0., 0., 0.]]]]).float()
-#     # y_hat = torch.tensor([[[[0., 1., 1., 1., 1., 1.],
-#     #       [0., 0., 1., 1., 1., 0.],
-#     #       [1., 0., 0., 1., 1., 1.],
-#     #       [1., 1., 1., 0., 0., 0.],
-#     #       [0., 1., 1., 1., 0., 0.],
-#     #       [0., 0., 1., 1., 0., 1.]]]]).float()
-#     #
-#     loss = SoftDirectionContinuityLoss(3)
-#
-#     x = torch.randn(2, 1, 4, 4)
-#     y_hat = torch.randn(2, 1, 12, 12)
-#
-#     # x = torch.tensor([[[[1, 2, 3], [4, 5, 6], [7, 8, 9]]], [[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]]).float()
-#     # y_hat = torch.tensor([[[[1, 2, 3, 4, 5, 6],
-#     #                         [7, 1, 2, 3, 4, 5],
-#     #                         [6, 7, 1, 2, 3, 4],
-#     #                         [5, 6, 7, 1, 2, 3],
-#     #                         [4, 5, 6, 7, 1, 2],
-#     #                         [3, 4, 5, 6, 7, 1]]],
-#     #                       [[[1, 1, 2, 2, 3, 3],
-#     #                         [1, 1, 2, 2, 3, 3],
-#     #                         [4, 4, 5, 5, 6, 6],
-#     #                         [4, 4, 5, 5, 6, 6],
-#     #                         [7, 7, 8, 8, 9, 9],
-#     #                         [7, 7, 8, 8, 9, 9]]]]).float()
-#
-#     print(loss(y_hat, x))
-#
-#     print(x)
-#     print(y_hat)
+
 
 
 class LossCombination(torch.nn.Module):

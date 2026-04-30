@@ -28,6 +28,7 @@ class AbstractModel(lightning.LightningModule):
             prefix='train/',
         )
         self.val_metrics = self.train_metrics.clone(prefix='val/')
+        self.test_metrics = self.train_metrics.clone(prefix='test/')
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
         """
@@ -67,6 +68,26 @@ class AbstractModel(lightning.LightningModule):
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.val_metrics.update(y_hat, y)
         self.log_dict(self.val_metrics, on_step=False, on_epoch=True)
+        return loss
+
+    def test_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
+        """
+        Validation step.
+        Makes step and logs loss and metrics.
+        Args:
+            batch : torch.Tensor
+            batch_idx: int
+
+        Returns:
+            loss
+        """
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss(y_hat, y, x)
+
+        self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.test_metrics.update(y_hat, y)
+        self.log_dict(self.test_metrics, on_step=False, on_epoch=True)
         return loss
 
     def predict_step(self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0) -> torch.Tensor:

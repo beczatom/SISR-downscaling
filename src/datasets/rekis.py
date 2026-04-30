@@ -27,11 +27,9 @@ class ReKIS(torch.utils.data.Dataset):
         self.scale_factor = scale_factor
 
         Y = Y.isel(easting=slice(0, 400), northing=slice(0, 400))
-        # TODO verify order of dimensions
         # spatial dimensions are set here because DataArray.sel loses them
         Y.rio.set_spatial_dims("easting", "northing")
 
-        # TODO how is it with resolution/shape?
         resolution = 1000 * self.scale_factor
         X = Y.rio.reproject(
             Y.rio.crs, resolution=(resolution, resolution), resampling=RESAMPLING
@@ -83,3 +81,7 @@ class ReKISDataModule(lightning.LightningDataModule):
     def val_dataloader(self) -> torch.utils.data.DataLoader:
         """Returns a DataLoader for the validation set."""
         return torch.utils.data.DataLoader(self.valset, batch_size=self.batch_size, num_workers=8)
+
+    def test_dataloader(self) -> torch.utils.data.DataLoader:
+        """Returns a DataLoader for the test set."""
+        return torch.utils.data.DataLoader(self.testset, batch_size=self.batch_size, num_workers=8)
