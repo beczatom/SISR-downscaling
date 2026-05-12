@@ -26,14 +26,19 @@ class ReKIS(torch.utils.data.Dataset):
         """
         self.scale_factor = scale_factor
 
+        # crop to 400 x 400
         Y = Y.isel(easting=slice(0, 400), northing=slice(0, 400))
+
         # spatial dimensions are set here because DataArray.sel loses them
         Y.rio.set_spatial_dims("easting", "northing")
 
         resolution = 1000 * self.scale_factor
+
+        # upscale
         X = Y.rio.reproject(
             Y.rio.crs, resolution=(resolution, resolution), resampling=RESAMPLING
         )
+
         self.X = torch.from_numpy(X.values).unsqueeze(1)
         self.Y = torch.from_numpy(Y.values).unsqueeze(1)
 
