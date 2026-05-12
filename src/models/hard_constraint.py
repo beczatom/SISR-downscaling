@@ -1,7 +1,12 @@
+"""
+The layer types are from Harder et al. https://www.jmlr.org/papers/v24/23-0158.html
+"""
+
 import torch
 
 from .model import AbstractModel
 
+EPS = 1e-8
 
 class ConstraintLayer(torch.nn.Module):
     """
@@ -19,57 +24,82 @@ class ConstraintLayer(torch.nn.Module):
 class AddConstraintLayer(ConstraintLayer):
     """
     Enforces conservation law using sums.
-    y_hat_j = y_tilde_j + sum x_i - sum y_tilde_i
-    Harder et al.
+
+    Suppose an input image X in R^n, and a model output image Y_tilde in R^m.
+    For the sake of simplicity the indexation is only one dimensional,
+    allowing us to state, that for j-th pixel of X,
+    the model makes mapping to a set I_j, which is a subset of {1, ..., m}.
+    These I_j are pairwise disjoint sets and for the scale factor of s, their sizes are s^2.
+    (Thus the model maps X_j to {Y_tilde_i | i in I_j})
+
+    For each i-th pixel of Y_tilde, where i in I_j, we calculate the constrained output Y_hat_i as:
+    Y_hat_i = Y_tilde_i + X_j - s^-2 * sum_{k in I_j} Y_tilde_k
     """
 
     def __init__(self, scale_factor: int):
         super().__init__(scale_factor)
 
-        self.upscale = torch.nn.Upsample(scale_factor=scale_factor, mode='nearest')
+        self.upsample = torch.nn.Upsample(scale_factor=scale_factor, mode='nearest')
         self.avg_pool = torch.nn.AvgPool2d(scale_factor)
 
     def forward(self, x: torch.Tensor, y_tilde: torch.Tensor) -> torch.Tensor:
         means = self.avg_pool(y_tilde)
         mean_diff = x - means
-        mean_diff_upscaled = self.upscale(mean_diff)
-        return y_tilde + mean_diff_upscaled
+        mean_diff_upsampled = self.upsample(mean_diff)
+        return y_tilde + mean_diff_upsampled
 
 
 class MultConstraintLayer(ConstraintLayer):
     """
     Enforces conservation law using product.
-    y_hat_j = y_tilde_j * (sum x_i / sum y_tilde_i)
-    Harder et al.
+
+    The setup is the same as in AddConstraintLayer.
+
+    For each i-th pixel of Y_tilde, where i in I_j, we calculate the constrained output Y_hat_i as:
+    Y_hat_i = Y_tilde_i * X_j / (s^-2 * sum_{k in I_j} Y_tilde_k)
+
+    Divisions around zero, will be unstable.
     """
 
     def __init__(self, scale_factor: int):
         super().__init__(scale_factor)
 
-        self.upscale = torch.nn.Upsample(scale_factor=scale_factor, mode='nearest')
+        self.upsample = torch.nn.Upsample(scale_factor=scale_factor, mode='nearest')
         self.avg_pool = torch.nn.AvgPool2d(scale_factor)
 
     def forward(self, x: torch.Tensor, y_tilde: torch.Tensor) -> torch.Tensor:
         means = self.avg_pool(y_tilde)
-        eps = 1e-8
-        means = means.sign() * torch.clamp(means.abs(), min=eps)
-        mean_diff = x.div(means)
-        mean_diff_upscaled = self.upscale(mean_diff)
-        return y_tilde.mul(mean_diff_upscaled)
+
+        # preventing division by zero
+        means = means.sign() * torch.clamp(means.abs(), min=EPS)
+
+        mean_ratio = x.div(means)
+        mean_ratio = self.upsample(mean_ratio)
+        return y_tilde.mul(mean_ratio)
 
 
 class SmConstraintLayer(ConstraintLayer):
     """
     Enforces conservation law using softmax.
-    Also enforces positivity, do not use on possible negative y-s.
-    y_hat_j = exp(y_tilde_j) * (sum x_i / sum exp(y_tilde_i))
-    Harder et al.
+
+    The setup is the same as in AddConstraintLayer.
+
+    For each i-th pixel of Y_tilde, where i in I_j, we calculate the constrained output Y_hat_i as:
+    Y_hat_i = exp(Y_tilde_i) * X_j / (s^-2 * sum_{k in I_j} exp(Y_tilde_k))
+
+    From the equation it is obvious that it enforces same sign as X_j,
+    this can in some cases be useful.
+    However in temperature in degrees C, near zero the water freezes, fine,
+    but the air dynamics doesn't change rapidly, meaning it is far less interesting point than 0K.
+    Additionally, when Y_tilde_i and the mean in the denominator are near 0 deg C,
+    we divide by 1e-8, which can output a large number, and the exp of zero will be near 1,
+    so this large output can be yielded.
     """
 
     def __init__(self, scale_factor: int):
         super().__init__(scale_factor)
 
-        self.upscale = torch.nn.Upsample(scale_factor=scale_factor, mode='nearest')
+        self.upsample = torch.nn.Upsample(scale_factor=scale_factor, mode='nearest')
         self.avg_pool = torch.nn.AvgPool2d(scale_factor)
 
     def forward(self, x: torch.Tensor, y_tilde: torch.Tensor) -> torch.Tensor:
@@ -77,12 +107,11 @@ class SmConstraintLayer(ConstraintLayer):
         means = self.avg_pool(y_tilde_exp)
 
         # always positive means
-        eps = 1e-8
-        means = torch.clamp(means.abs(), min=eps)
+        means = torch.clamp(means.abs(), min=EPS)
 
         mean_diff = x.div(means)
-        mean_diff_upscaled = self.upscale(mean_diff)
-        return y_tilde_exp.mul(mean_diff_upscaled)
+        mean_diff_upsampled = self.upsample(mean_diff)
+        return y_tilde_exp.mul(mean_diff_upsampled)
 
 
 class ConstrainedModel(AbstractModel):
@@ -110,8 +139,10 @@ class ConstrainedModel(AbstractModel):
         Returns:
             y_hat: torch.Tensor Predicted image
         """
+
+        # output of the model, y_tilde, will be passed into constraint layer
         y_tilde = self.model(x)
 
-        # constraint layer
+        # constraint layer to obtain y_hat = final prediction
         y_hat = self.constraint(x, y_tilde)
         return y_hat

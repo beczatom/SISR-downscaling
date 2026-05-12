@@ -1,7 +1,5 @@
-from .loss import LossCombination, ConservationLoss, SimpleGradientLoss, SoftSimpleGradientLoss, SobelGradientLoss, \
-    SoftSobelGradientLoss, ContinuityLoss, SoftContinuityLoss, GLoss, SoftGLoss, GradientVarianceLoss, \
-    DirectionContinuityLoss, SoftDirectionContinuityLoss, MSELoss, L1Loss, VarLoss, SoftSobelDirectionContinuityLoss
+from .loss import MSELoss, L1Loss, ConservationLoss, SoftSimpleDerivativeLoss, SoftSobelGradientMagnitudeLoss, \
+    SoftContinuityLoss, SoftGradientDirectionLoss, SoftSobelGradientDirectionLoss, SoftGLoss, LossCombination
 
-__all__ = ["LossCombination", "ConservationLoss", "SimpleGradientLoss", "SoftSimpleGradientLoss", "SobelGradientLoss",
-           "SoftSobelGradientLoss", "ContinuityLoss", "SoftContinuityLoss", "GLoss", "SoftGLoss", "GradientVarianceLoss",
-           "DirectionContinuityLoss", "SoftDirectionContinuityLoss", "MSELoss", "L1Loss", "VarLoss", "SoftSobelDirectionContinuityLoss"]
+__all__ = ["MSELoss", "L1Loss", "ConservationLoss", "SoftSimpleDerivativeLoss", "SoftSobelGradientMagnitudeLoss",
+    "SoftContinuityLoss", "SoftGradientDirectionLoss", "SoftSobelGradientDirectionLoss", "SoftGLoss", "LossCombination"]

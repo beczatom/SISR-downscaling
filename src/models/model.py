@@ -105,5 +105,10 @@ class AbstractModel(lightning.LightningModule):
         return self(x)
 
     def on_before_optimizer_step(self, optimizer):
+        """
+        Called before the optimizer step, logs the gradient norm.
+        Args:
+            optimizer: torch.optim
+        """
         grad_norm = torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=float('inf'))
         self.log("grad_norm", grad_norm, on_step=False, on_epoch=True, prog_bar=True)
