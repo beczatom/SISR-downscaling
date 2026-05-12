@@ -13,10 +13,10 @@ model:
           - 0.0001
         losses:
           - class_path: loss.L1Loss
-          - class_path: loss.ConservationLoss
+          - class_path: loss.SoftSobelGradientDirectionLoss
             init_args:
               scale_factor: 16
-              penalization: 'mae'
+              penalization: 'mse'
 
 optimizer:
   class_path: torch.optim.Adam

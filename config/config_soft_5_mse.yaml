@@ -13,7 +13,7 @@ model:
           - 0.0001
         losses:
           - class_path: loss.L1Loss
-          - class_path: loss.SoftGLoss
+          - class_path: loss.SoftContinuityLoss
             init_args:
               scale_factor: 16
               penalization: 'mse'

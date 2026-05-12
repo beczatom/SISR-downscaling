@@ -9,11 +9,11 @@ model:
       class_path: loss.LossCombination
       init_args:
         weights:
-          - 0.9999
-          - 0.0001
+          - 0.999
+          - 0.001
         losses:
           - class_path: loss.L1Loss
-          - class_path: loss.ConservationLoss
+          - class_path: loss.SoftSimpleDerivativeLoss
             init_args:
               scale_factor: 16
               penalization: 'mae'
