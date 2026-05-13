@@ -1,0 +1,26 @@
+%---------------------------------------------------------------
+\chapter{Discussion}
+%---------------------------------------------------------------
+
+In the study by Harder et al.~\cite{Harder2023}, the hard-constrained model outperformed the unconstrained model when moist static energy conservation was enforced in downscaling the water content and temperature.
+In the same work, the same conservation law was also imposed on natural images, where it has no physical meaning. 
+Yet, it again yielded better results than the unconstrained model.
+In contrast, when the conservation constraint was applied only to temperature in the NorESM dataset, the constrained models did not surpass the unconstrained baseline.
+It is important to note that temperature alone cannot be integrated, and the additional variables needed to compute moist static energy are not available.
+Consequently, this configuration also lacks a solid physical basis.
+Our improved performance (Section~\ref{s:test_eval}) in a comparable setting -- downscaling temperature with the conservation constraint applied solely to temperature -- can be explained by the following factors:
+\begin{description}
+    \item[Resampling method.]  
+    Harder et al.~\cite{Harder2023} reported substantial violations of the assumed constraint between their LR and HR data, in part because the LR data were not obtained by resampling the HR; instead, they originated from the same source at different resolutions.
+    We likewise quantified these violations for different resampling schemes and tested two of them.
+    With average resampling, the violations in the LR–HR pairs were almost negligible, and the constraints improved the model’s performance.
+    In contrast, using cubic spline resampling led to large violations in the LR–HR pairs, and incorporating the constraints did not produce a significant benefit.
+    \item[Scale factor.]
+    While Harder et al.~\cite{Harder2023} adopted a scale factor of 2, we experimented with them and found that the largest improvement is for 16.
+    Over the range of scale factors considered, the relative improvement remained small for low scale factors, where the task appears too simple, and for very high scale factors, where the LR image comprises only a few pixels and the reconstruction problem becomes extremely difficult.
+    \newpage
+    \item[Resolution.]
+    In Harder et al.~\cite{Harder2023}, the LR and HR grids had resolutions of $2^\circ$ and $1^\circ$ (around 200 and 100 km), respectively, whereas in our case, for a scale factor of 16, the corresponding resolutions are approximately $0.16^\circ$ and $0.01^\circ$ (16 and 1 km).
+    We regard this discrepancy as substantial and hypothesize that resolution contributes to the differing outcomes, since temperature variability is clearly greater over a $200\times 200$ km area than over a $16\times 16$ km region.
+\end{description}
+

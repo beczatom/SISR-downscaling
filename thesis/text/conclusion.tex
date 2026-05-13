@@ -1,0 +1,58 @@
+%---------------------------------------------------------------
+\chapter{Conclusion}
+%---------------------------------------------------------------
+
+In Chapter~\ref{ch:related_work}, we focused on describing the current state of research. 
+It has been discussed that the models and datasets have been recently applied to both climate and non-climate downscaling. 
+The problem of physical consistency has also been emphasized, and several proposed solutions have been reviewed and summarized.
+We also emphasized that physical constraints can involve more than one physical quantity.
+Moreover, the necessary theoretical pillars of our work have been defined, such as the concepts of neural networks, evaluation metrics, vector fields, and image processing.
+We presented the used neural network architecture -- EDSR. 
+However, the main emphasis was on defining the constraints.
+We have proposed a more general definition than in Harder et al.~\cite{Harder2023}.
+We introduced the concept of the dilated derivative and demonstrated its consistency under downscaling.
+Following Harder et al.~\cite{Harder2023}, the same conservation law has been adopted, applying it both as a soft and a hard constraint.
+In addition, we adapted several physical loss function augmentations so that they satisfy the formal definition of a constraint and incorporated them as soft constraints.
+All these constraints were built upon the principle of dilated derivative consistency.
+
+In Chapter~\ref{ch:experiments},  the introduction of the observational gridded dataset used for model training -- ReKIS -- as well as the climate projection dataset -- EURO-CORDEX -- took place.
+After that, the data preprocessing specification followed.
+We have also conducted more experiments on the ReKIS dataset aimed at identifying the most suitable configuration of the resampling technique, scale factor, constraint type, and their specific settings (alpha value for the soft-constraint approach, and constraining layer type for the hard-constraint approach).
+These experiments were carried out with the goal of determining the optimal setup for downscaling EURO-CORDEX.
+
+In Section~\ref{s:resampling_method_exp}, we showed that the chosen resampling method used to generate the LR images substantially affects the model’s performance, with a particularly strong effect in the hard-constraint setting.
+In addition, the introduction of constraints -- both soft and hard -- generally improved the models’ metrics across almost all scale factors.
+The most pronounced gain, however, occurred at a scale factor of 16.
+We also demonstrated that the constraints themselves are sensitive to the resampling method, as all of them detect some level of violation when applied to HR–LR image pairs, except in the case where the LR images are obtained via average pooling of the HR images.
+
+We tested all soft constraints on ReKIS using two penalty formulations for constraint violations -- absolute and squared in Section~\ref{s:constraints_exp}.
+All tested constraints produced meaningful effects; however, the constraint based on the difference between simple derivatives with respect to both coordinates turned out to be the most effective.
+
+Consequently, we conducted experiments (Section~\ref{s:soft_constraints_alpha_exp}) varying the relative weight of the constraint term with respect to the pixel-wise loss.
+Performance improved when the pixel-wise term dominated the loss.
+The optimal value of $\alpha$ -- the weighting factor of the constraint loss -- matched the value reported by Harder et al.~\cite{Harder2023}, namely $10^{-4}$.
+
+Finally, in Section~\ref{s:models_size_exp}, we investigated the impact of model size.
+We ran experiments with unconstrained, soft-constrained, and hard-constrained EDSR models, varying both the number of residual blocks and the number of channels used in them.
+Across all runs, the hard-constrained model consistently delivered superior performance.
+In one configuration, it even reduced the pixel-wise error to one third of that obtained by an unconstrained model of the same size.
+In addition, we observed markedly improved stability in the performance of hard-constrained models as the model size increased.
+
+\section{Future work}
+
+This work has demonstrated the beneficial impact of applying physical constraints to mean temperature downscaling across different EDSR model sizes and scale factors. 
+However, no experiments were carried out for other physical variables. 
+Consequently, assessing how far these physical constraints can be extended to additional quantities remains an avenue for future research. 
+In addition, multiple variables could be downscaled simultaneously -- multivariate downscaling -- where the constraints could be exploited to enforce specific physical relationships among the variables. 
+Additionally, introducing further physical constraints that depend only on temperature could enhance the performance of the current model.
+
+Throughout this study, only the EDSR architecture was used; other models, such as SwinIR, which achieved the best performance in Košťál et al.~\cite{Kostal2025}, could also be explored. 
+Moreover, a broader exploration of resampling methods, scale factors, model architectures, model sizes, constraint formulations, alpha settings, and additional configurations could reveal a model with superior performance.
+\newpage
+ReKIS was the sole dataset used in this work for training and evaluating the proposed models and methods. 
+Incorporating other data sources could improve the generalization capability of the models.
+Moreover, ReKIS's area is dominated by plains, that can be recognized by the relatively large scale factors and small error values in this work; however, focusing on a more mountainous region could identify limitations of the configuration used in this work.
+
+\subsubsection*{Acknowledgment}
+
+The access to the computational infrastructure of the OP VVV funded project CZ.02.1.01/0.0/0.0/16\_019/0000765 ``Research Center for Informatics'' is also gratefully acknowledged.

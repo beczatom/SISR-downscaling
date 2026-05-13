@@ -1,0 +1,299 @@
+%% This is the ctufit-thesis example file. It is used to produce theses
+%% for submission to Czech Technical University, Faculty of Information Technology.
+%%
+%% This is version 1.6.0, built 18. 9. 2025.
+%% 
+%% Get the newest version from
+%% https://gitlab.fit.cvut.cz/theses-templates/FITthesis-LaTeX
+%%
+%%
+%% Copyright 2024, Tomas Novacek
+%% Copyright 2021, Eliska Sestakova and Ondrej Guth
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%  https://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%%
+%% The current maintainer of this work is Tomas Novacek (novacto3@fit.cvut.cz).
+%% Alternatively, submit bug reports to the tracker at
+%% https://gitlab.fit.cvut.cz/theses-templates/FITthesis-LaTeX/issues
+%%
+%%
+
+% arara: xelatex
+% arara: biber
+% arara: xelatex
+% arara: xelatex
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CLASS OPTIONS
+% language: czech/english/slovak
+% thesis type: bachelor/master/dissertation/doctoral-report
+% electronic (oneside) or printed (twoside), twoside is default
+% paragraph - if passed, this optional argument sets paragraphs as the deepest level of headers, styles it, numbers it and adds it to Table of Content. Use with care! Normally, it is considered unwise to use it, since it is too deep.
+% colour: bw for black&white OR no option for default colour scheme
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[english,bachelor,oneside]{ctufit-thesis}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% FILL IN THIS INFORMATION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\ctufittitle{Downscaling climate data with physically-constrained single-image super resolution} % replace with the title of your thesis
+\ctufitauthorfull{Tomáš Becza} % replace with your full name (first name(s) and then family name(s) / surname(s)) including academic degrees
+\ctufitauthorsurnames{Becza} % replace with your surname(s) / family name(s)
+\ctufitauthorgivennames{Tomáš} % replace with your first name(s) / given name(s)
+\ctufitsupervisor{Ing.\,Ondřej Podsztavek,\,Ph.D.} % replace with name of your supervisor/advisor (include academic degrees)
+\ctufitdepartment{Department of Applied Mathematics} % replace with the department of your defence
+\ctufitprogram{Informatics} % replace with your study program
+\ctufitspecialisation{Artificial Intelligence 2021} % replace with your specialisation
+\ctufityear{2026} % replace with the year of your defence
+\ctufitdeclarationplace{Prague} % replace with the place where you sign the declaration
+\ctufitdeclarationdate{\today} % replace with the date of signature of the declaration
+\ctufitabstractCZE{
+Predpovede klimatických dát sú väčšinou k dispozícii v rozlíšení od $0.44^\circ$ ($50$km) do $0.11^\circ$ ($12.5$km).
+To je v súčasnej dobe už nedostatočné a preto sa výskum zaoberá zvyšovaním tohto rozlíšenia -- downscaling-om.
+Avšak viaceré štúdie sa pri evaluácii príliš sústredia na pixel-wise chybu výstupu modelov a skutočnej hodnoty.
+To môže nútiť modely produkovať fyzikálne nekonzistentné výstupy, len aby vyhoveli vyššie spomínanej pixel-wise stratovej funkcii.
+Preto existujú takzvané fyzikálne obmedzenia ktoré, buď minimalizujú -- mäkké obmedzenia -- alebo kompletne zakazujú -- tvrdé obmedzenia -- nekonzistentné výstupy.
+V tejto práci bolo odvodených niekoľko mäkkých obmedzení na základe konzistencie dilatačnej derivácie skrz downscaling.
+Tieto obmedzenia, spolu s mäkkým a tvrdým obmedzením zákonu zachovania, sú v práci viacerými experimentmi ukázané ako úspešne vylepšujúce výkon modelov skrz rôzne typy obmedzení, veľkosti modelov ale aj škálovacích faktorov.
+}
+\ctufitabstractENG{
+Climate data projections are available in the resolution from $0.44^\circ$ ($50$km) to $0.11^\circ$ ($12.5$km).
+Currently, this is insufficient, therefore the resolution enhancing technique -- downscaling -- is involved.
+However, various studies give a large accent on pixel-wise errors of downscaled images and targets.
+That can force models to produce physically inconsistent outputs, only to minimize the pixel-wise loss function.
+Thus, physical constraints are involved, which minimze -- soft constraints -- or completely forbid -- hard constraints -- incosistent outputs.
+In this work more soft constraints were derived based on the dilated derivative consistency through downscaling.
+These constraints, along with soft and hard constraint of conservation law, are by various experiment demonstrated as successfully improving the models' performances through constraint types, model sizes or scale factors.
+}
+\ctufitkeywordsCZE{klimatické dáta, downscaling, EDSR, soft-constrain\-ing, hard-con\-strain\-ing, physical-constraining, single-image super resolution}
+\ctufitkeywordsENG{climate data, downscaling, EDSR, soft-constrain\-ing, hard-con\-strain\-ing, physical-constraining, single-image super resolution}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% END FILL IN
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CUSTOMIZATION of this template
+% Skip this part or alter it if you know what you are doing.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\RequirePackage{iftex}[2020/03/06]
+\iftutex % XeLaTeX and LuaLaTeX
+    \RequirePackage{ellipsis}[2020/05/22] %ellipsis workaround for XeLaTeX
+\else
+    \errmessage{Only compilation with XeLaTeX or LuaLaTeX is allowed}
+    \stop
+\fi
+
+% hyperlinks
+\hypersetup{
+    pdfpagelayout=TwoPageRight,
+    colorlinks=false,
+    allcolors=decoration,
+    pdfborder={0 0 0.1}
+}
+
+% uncomment the following to hide all hyperlinks
+%\hypersetup{hidelinks}
+
+% uncomment the following to change the colour of all hyperlinks to CTU blue
+%\hypersetup{allbordercolors=decoration}
+
+\RequirePackage{pdfpages}[2020/01/28]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CUSTOMIZATION of this template END
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%
+% PACKAGES SETTINGS
+% You may choose to modify this part.
+%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{dirtree}
+\usepackage{lipsum,tikz}
+\usepackage[style=iso-numeric, maxbibnames=5, minbibnames=5]{biblatex}
+\addbibresource{text/bib-database.bib}
+\usepackage{xurl}
+\usepackage{listings} % typesetting of sources
+\usepackage{minted}
+\usepackage{csquotes}
+\usepackage{pdflscape}
+\usepackage{subcaption}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{hhline}
+\usepackage{nicematrix}
+\usetikzlibrary{decorations.pathreplacing}
+\usepackage[final, verbose=silent]{microtype}
+
+%%%%%%%%%%%%%%%%%%%%%%
+% PACKAGES SETTINGS END
+%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\frontmatter\frontmatterinit % do not remove these two commands
+
+\thispagestyle{empty}\maketitle\thispagestyle{empty}\cleardoublepage % do not remove these four commands
+
+\includepdf[pages={1-}]{beczatom-assignment.pdf} % replace this file with your thesis assignment generated from ProjectsFIT
+
+\imprintpage % do not remove this command
+\stopTOCentries
+
+%%%%%%%%%%%%%%%%%%%
+% ACKNOWLEDGMENT
+% FILL IN / MODIFY
+% This is a place to thank people for helping you. It is common to thank your supervisor.
+%%%%%%%%%%%%%%%%%%%
+\begin{acknowledgmentpage}
+
+    I would like to express my sincere gratitude to my supervisor, Ing.\,Ondřej Podsztavek,\,Ph.D., for the invaluable suggestions regarding the implementation and guidance throughout writing this thesis.
+    My heartfelt thanks go to my parents, and my partner Tinka for always being there for me along the way, and their support when it got challenging.
+\end{acknowledgmentpage}
+%%%%%%%%%%%%%%%%%%%
+% ACKNOWLEDGMENT END
+%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%
+% DECLARATION
+% FILL IN / MODIFY
+%%%%%%%%%%%%%%%%%%%
+% INSTRUCTIONS
+% ENG: choose one of approved texts of the declaration. DO NOT CREATE YOUR OWN. Find the approved texts at https://courses.fit.cvut.cz/SFE/download/index.html#_documents (document Declaration for FT in English)
+% CZE/SLO: Vyberte jedno z fakultou schvalenych prohlaseni. NEVKLADEJTE VLASTNI TEXT. Schvalena prohlaseni najdete zde: https://courses.fit.cvut.cz/SZZ/dokumenty/index.html#_dokumenty (prohlášení do ZP)
+\begin{declarationpage}
+    I declare that I have used AI tools during the preparation and writing of my thesis. 
+    I have verified the generated content. 
+    I confirm that I am aware that I am fully responsible for the content of the thesis.
+
+	I hereby declare that the presented thesis is my own work and that I have cited all sources of information in accordance with the Guideline for adhering to ethical principles when elaborating an academic final thesis.
+    
+    I acknowledge that my thesis is subject to the rights and obligations stipulated by the Act No.
+    121/2000 Coll., the Copyright Act, as amended. 
+    In accordance with Section 2373(2) of Act No. 89/2012 Coll., the Civil Code, as amended, I hereby grant a non-exclusive authorization (licence) to utilize this thesis, including all computer programs that are part of it or attached to it and all documentation thereof (hereinafter collectively referred to as the ``Work''), to any and all persons who wish to use the Work. 
+    Such persons are entitled to use the Work in any manner that does not diminish the value of the Work and for any purpose (including use for profit). 
+    This authorisation is unlimited in time, territory and quantity.
+\end{declarationpage}
+%%%%%%%%%%%%%%%%%%%
+% DECLARATION END
+%%%%%%%%%%%%%%%%%%%
+
+% Use one of the two following commands. The first prints abstracts+keywords on two pages, the second puts them on one page (if possible). \printonepageabstract can also accept optional argument that specifies a vertical space before both abstracts (the default is 18 mm).
+\printtwopageabstract
+%\printonepageabstract 
+
+%%%%%%%%%%%%%%%%%%%
+% SUMMARY
+% FILL IN / MODIFY
+% OR REMOVE ENTIRELY (upon agreement with your supervisor)
+% (appropriate to remove in most theses)
+%%%%%%%%%%%%%%%%%%%
+% \begin{summarypage}
+% \section*{Summary section}
+% 
+% \lipsum[1][1-8]
+% 
+% \section*{Summary section}
+% 
+% \lipsum[2][1-6]
+% 
+% \section*{Summary section}
+% 
+% \lipsum[3]
+% 
+% \section*{Summary section}
+% 
+% \lipsum[2]
+% 
+% \section*{Summary section}
+% 
+% \lipsum[1][1-8] Lorem lorem lorem.
+% \end{summarypage}
+%%%%%%%%%%%%%%%%%%%
+% SUMMARY END
+%%%%%%%%%%%%%%%%%%%
+\setcounter{tocdepth}{1}
+\tableofcontents % do not remove this command
+%%%%%%%%%%%%%%%%%%%%%%
+% list of other contents: figures, tables, code listings, algorithms, etc.
+% add/remove commands accordingly
+%%%%%%%%%%%%%%%%%%%%%%
+\listoffigures % list of figures
+\begingroup
+\let\clearpage\relax
+\listoftables % list of tables. Remove if you do not have any.
+%\thectufitlistingscommand{} % list of code listings. Remove if you do not have any.
+\thectufitlistofalgorithmscommand{} % list of algorithm pseudocodes defined using the algorithm package.
+\endgroup
+%%%%%%%%%%%%%%%%%%%%%%
+% list of other contents END
+%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%
+% ABBREVIATIONS
+% FILL IN / MODIFY
+% OR REMOVE ENTIRELY
+% List the abbreviations in lexicography order.
+%%%%%%%%%%%%%%%%%%%
+\chapter{\thectufitabbreviationlabel}
+
+\begin{tabular}{rl}
+    CNN & Convolutional Neural Network \\
+    CRS & Coordinate Reference System \\
+    EDSR & Enhanced Deep Super-Resolution Network \\
+    FNO & Fourier Neural Operator \\
+    GAN & Generative Adversarial Network \\
+    GCM & Global Climate Model \\
+    HR & High Resolution \\
+    LR & Low Resolution \\
+    MAE & Mean Absolute Error \\
+    MSE & Mean Square Error \\
+    RCM & Regional Climate Model \\
+    ReKIS & Regionales Klimainformationssystem Sachsen, \\ & Sachsen-Anhalt, Thüringen \\
+    RMSE & Root Mean Square Error \\
+	SISR & Single-Image Super Resolution \\
+	SR & Super Resolution \\
+    SRCNN & Super-Resolution Convolutional Neural Network \\
+\end{tabular}
+%%%%%%%%%%%%%%%%%%%
+% ABBREVIATIONS END
+%%%%%%%%%%%%%%%%%%%
+\resumeTOCentries
+\mainmatter\mainmatterinit % do not remove these two commands
+%%%%%%%%%%%%%%%%%%%
+% THE THESIS
+% MODIFY ANYTHING BELOW THIS LINE
+%%%%%%%%%%%%%%%%%%%
+
+\include{text/introduction}
+
+\include{text/related_work}
+
+\include{text/experiments}
+
+\include{text/discussion}
+
+\include{text/conclusion}
+
+% \include{text/text} % include `text.tex' from `text/' subdirectory
+
+\appendix\appendixinit % do not remove these two commands
+
+\include{text/appendix} % include `appendix.tex' from `text/' subdirectory
+
+\backmatter % do not remove this command
+
+\printbibliography % print out the BibLaTeX-generated bibliography list
+
+\include{text/medium} % include `medium.tex' from `text/' subdirectory
+
+\end{document}

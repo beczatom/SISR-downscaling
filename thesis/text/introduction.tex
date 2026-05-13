@@ -1,0 +1,57 @@
+% Do not forget to include Introduction
+%---------------------------------------------------------------
+% \chapter{Introduction}
+% uncomment the following line to create an unnumbered chapter
+\chapter*{Introduction}\addcontentsline{toc}{chapter}{Introduction}\markboth{Introduction}{Introduction}
+\label{ch:introduction}
+%---------------------------------------------------------------
+\setcounter{page}{1}
+
+% The following environment can be used as a mini-introduction for a chapter. Use that any way it pleases you (or comment it out). It can contain, for instance, a summary of the chapter. Or, there can be a quotation.
+% \begin{chapterabstract}
+% 	Nullam feugiat, turpis at pulvinar vulputate, erat libero tristique tellus, nec bibendum odio risus sit amet ante. Aenean id metus id velit ullamcorper pulvinar. Fusce wisi. Integer lacinia. Aliquam id dolor.
+% \end{chapterabstract}
+
+Climate change has been a widely researched topic in recent years.
+Numerous studies aim to identify the causes, quantify the effects, make predictions, or even suggest potential solutions for this pressing issue.
+All of them hunger for one fundamental element -- \textit{precise data}.
+Without accurate data, it is impossible to set expectations for a high-quality outcome.
+
+Data sources providing climate data projections, such as EURO-CORDEX, usually have limited resolution, ranging from $0.44^\circ$ ($50$km) to $0.11^\circ$ ($12.5$km).
+This resolution can be too coarse for local decision-making, including urban planning, agriculture, or forestry.
+To address this problem, we will implement a process of increasing the spatial resolution of climate data -- \textit{downscaling}.
+In other words, downscaling refers to the task of finding a mapping from a low-resolution (LR) input to the corresponding super-resolution (SR) output, which should be as similar as possible to its true high-resolution (HR) version.
+There are two main approaches to finding the ideal mapping -- \textit{dynamical} and \textit{statistical} downscaling.
+Dynamical downscaling is based on physical relationships between LR climate data; it provides physically consistent output; however, it comes with a high computational cost.
+On the other hand, the statistical approach relies on statistical relationships between LR and HR pairs.
+This approach is implemented in the form of statistical models -- currently, mostly neural networks.
+Compared to dynamical downscaling, this method is faster and computationally inexpensive; thus, it can be applied to generate data at a finer resolution than the dynamical approach~\cite{Tabari2021}.
+
+Training with LR and HR pairs is not as straightforward as in the usual case.
+The problem is that, for climate data projections, the HR part is missing.
+Therefore, we will train our models on the observational gridded dataset -- the HR grid, the resolution of which can be synthetically reduced to form a LR grid.
+If we choose the resolution of the LR grid to be the same as the resolution of the LR projections, we can then apply the model (trained on the LR and HR observational pairs) to the projections data to obtain the desired downscaled climate projections data in super-resolution.
+\newpage
+Climate data are commonly expressed on a two-dimensional grid, which allows them to be handled in the same way as images.
+Downscaling of conventional images is referred to as \textit{single-image super resolution} (SISR).
+Using this framework, techniques originally designed to increase the resolution of standard images can also be applied to climate data.
+However, SISR fails to account for the fact that the variable being downscaled is a physical quantity and, as such, must obey the governing physical principles.
+Therefore, these models can and will produce physically inconsistent outputs until some penalization or restriction is included. 
+It has been shown that physically constrained SISR models not only produce outputs that are more consistent with the underlying physical principles, but also exhibit reduced pixel-wise error relative to their unconstrained counterparts.~\cite{Harder2023, Beucler2021}
+
+This work starts  (Chapter~\ref{ch:related_work}) by describing the current state of the research relating to both climate and non-climate data downscaling, as well as the incorporation of physical information into downscaling models.
+Then the necessary definitions follow to understand the solution, mainly the concepts of neural networks, the constraining setup, and the fundamentals of image processing.
+We describe the techniques used and derive the soft constraints based on dilated derivatives.
+Then we conduct experiments regarding the resampling method, model size, and scale factor in Chapter~\ref{ch:experiments}.
+The implementation is available at our GitHub repository (\href{https://github.com/beczatom/SISR-downscaling}{\nolinkurl{https://github.com/beczatom/SISR-downscaling}}).
+
+\section*{Goals}\phantomsection\addcontentsline{toc}{section}{Goals}\markboth{Goals}{Goals}
+
+The goals of this work can be described in the following points:
+\begin{itemize}
+    \item Compose a literature review on using physically-constrained approaches to both climate and non-climate single-image super resolution downscaling.
+    \item Implement at least two physical constraints for climate single-image super resolution downscaling.
+    \item Perform the training and evaluation on the observational data, then apply the trained model to climate projections to downscale them.
+    \item Evaluate the models with and without the physical constraints.
+    \item Discuss the results.
+\end{itemize}
