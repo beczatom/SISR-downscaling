@@ -1,18 +1,18 @@
 #!/bin/bash
-#SBATCH --partition=gpu          # Výběr GPU fronty
-#SBATCH --nodes=1                # Počet uzlů
-#SBATCH --ntasks-per-node=1      # Počet úloh
-#SBATCH --cpus-per-task=8        # Počet CPU jader
-#SBATCH --gres=gpu:1             # Počet GPU (např. 1x A100 nebo RTX)
-#SBATCH --mem=32G                # Operační paměť
-#SBATCH --time=24:00:00          # Maximální čas běhu
-#SBATCH --job-name=moje_sit      # Název úlohy
+#SBATCH --partition=gpu          # GPU partition
+#SBATCH --nodes=1                # Nodes number
+#SBATCH --ntasks-per-node=1      # Tasks number
+#SBATCH --cpus-per-task=8        # CPU cores
+#SBATCH --gres=gpu:1             # Number of GPU
+#SBATCH --mem=32G                # RAM
+#SBATCH --time=24:00:00          # Time limit
+#SBATCH --job-name=my_net        # Task name
 mkdir -p logs
-#SBATCH --output=logs/result.out # Kam se ukládá textový výstup
+#SBATCH --output=logs/result.out # Output file
 
-# Načtení modulů a aktivace prostředí
+# Modules and environment activation
 module load Python/3.12.3-GCCcore-13.3.0
 source ~/.rci/bin/activate
 
-# Spuštění samotného tréninku
-~/SISR-downscaling/train_script
+# Start of training
+python train/train.py fit --config config/config_res_400_h.yaml
