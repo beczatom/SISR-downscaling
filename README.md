@@ -9,12 +9,18 @@ This repository contains the implementation of our final thesis
 ---
 
 ## 🔧 Setup
+
+Setup depends on the GPU CUDA version.
+We provide two different requirements file for:
+- frequently used CUDA 12.4 `requirements124.txt`
+- new CUDA 13 `requirements130.txt`
+
 ```bash
 git clone git@github.com:beczatom/SISR-downscaling.git
 python3 -m venv .venv
 source .venv/bin/activate
 cd SISR-downscaling
-pip install -r requirements.txt
+pip install -r requirementsXXX.txt
 pip install -e .
 ```
 
