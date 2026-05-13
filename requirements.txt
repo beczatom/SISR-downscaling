@@ -44,8 +44,6 @@ Deprecated==1.2.18
 distributed==2025.3.0
 docstring_parser==0.16
 donfig==0.8.1.post1
-# Editable install with no version control (downscaling==0.0.0)
--e /home/tomas/ctu/current/SISR-downscaling
 executing==2.2.0
 fastjsonschema==2.21.2
 filelock==3.17.0
