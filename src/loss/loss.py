@@ -53,6 +53,7 @@ def dilated_derivative(image: torch.Tensor, derivative_kernels: list[torch.Tenso
     return res
 
 
+# Section 1.3.2.1
 class ConservationLoss(torch.nn.Module):
     """
     Implements the conservation loss function.
@@ -99,6 +100,7 @@ class ConservationLoss(torch.nn.Module):
         return self.penalization(means, lr)
 
 
+# Section 1.3.2.2
 class SoftSimpleDerivativeLoss(torch.nn.Module):
     """
     Measures the difference between the dilated model output derivatives and the LR derivatives.
@@ -154,8 +156,7 @@ class SoftSimpleDerivativeLoss(torch.nn.Module):
         return loss
 
 
-# Zhengyang Lu, Ying Chen. 2020. Single image super-resolution based on a modified U-net with mixed gradient loss.
-# Signal, Image and Video Processing (2022). https://doi.org/10.1007/s11760-021-02063-5.
+# Section 1.3.2.3
 class SoftSobelGradientMagnitudeLoss(torch.nn.Module):
     """
     Modifies the Sobel gradient magnitude loss function to match the definition of soft constraint.
@@ -215,8 +216,7 @@ class SoftSobelGradientMagnitudeLoss(torch.nn.Module):
         return self.penalization(sr_grad, lr_grad)
 
 
-# Xiong, M. Q., 2025: Impact of physical constraints on deep learning-based downscaling prediction of temperature.
-# J. Meteor. Res., 39(4), 904–919, https://doi.org/10.1007/s13351-025-4061-1.
+# Section 1.3.2.4
 class SoftContinuityLoss(torch.nn.Module):
     """
     Modifies the Continuity loss function to match the definition of soft constraint.
@@ -272,7 +272,7 @@ class SoftContinuityLoss(torch.nn.Module):
         loss = torch.zeros(1, dtype=sr.dtype, device=sr.device)
         if self.penalization == 'mae':
             loss = (
-                        dilated_sr_dx.abs().mean() + dilated_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
+                    dilated_sr_dx.abs().mean() + dilated_sr_dy.abs().mean() - lr_dx.abs().mean() - lr_dy.abs().mean()).abs()
         elif self.penalization == 'mse':
             loss = (dilated_sr_dx.pow(2).mean() + dilated_sr_dy.pow(2).mean() - lr_dx.pow(2).mean() - lr_dy.pow(
                 2).mean()).abs()
@@ -280,8 +280,7 @@ class SoftContinuityLoss(torch.nn.Module):
         return loss
 
 
-# Inspired by : Xiong, M. Q., 2025: Impact of physical constraints on deep learning-based downscaling prediction of temperature.
-# J. Meteor. Res., 39(4), 904–919, https://doi.org/10.1007/s13351-025-4061-1.
+# Section 1.3.2.5
 class SoftGradientDirectionLoss(torch.nn.Module):
     """
     Modifies the Gradient Direction Loss function to match the definition of soft constraint.
@@ -354,6 +353,7 @@ class SoftGradientDirectionLoss(torch.nn.Module):
         return loss
 
 
+# Section 1.3.2.5
 class SoftSobelGradientDirectionLoss(torch.nn.Module):
     """
     Modifies the Soft Gradient Direction loss function to use Sobel kernels for the derivatives computation.
@@ -419,8 +419,7 @@ class SoftSobelGradientDirectionLoss(torch.nn.Module):
         return loss
 
 
-# Lei Ge, Lei Dou. 2023. G-Loss: A loss function with gradient information for super-resolution.
-# Optik - International Journal for Light and Electron Optics. https://doi.org/10.1016/j.ijleo.2023.170750.
+# Section 1.3.2.6
 class SoftGLoss(torch.nn.Module):
     """
     Modifies the G-Loss to match the definition of soft constraint.

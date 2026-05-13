@@ -8,6 +8,7 @@ from .model import AbstractModel
 
 EPS = 1e-8
 
+
 class ConstraintLayer(torch.nn.Module):
     """
     Abstract constraint layer.
@@ -21,6 +22,7 @@ class ConstraintLayer(torch.nn.Module):
         self.scale_factor = scale_factor
 
 
+# Section 1.3.3.2
 class AddConstraintLayer(ConstraintLayer):
     """
     Enforces conservation law using sums.
@@ -49,6 +51,7 @@ class AddConstraintLayer(ConstraintLayer):
         return y_tilde + mean_diff_upsampled
 
 
+# Section 1.3.3.2
 class MultConstraintLayer(ConstraintLayer):
     """
     Enforces conservation law using product.
@@ -78,6 +81,7 @@ class MultConstraintLayer(ConstraintLayer):
         return y_tilde.mul(mean_ratio)
 
 
+# Section 1.3.3.2
 class SmConstraintLayer(ConstraintLayer):
     """
     Enforces conservation law using softmax.
