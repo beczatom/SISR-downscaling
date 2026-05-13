@@ -20,18 +20,18 @@ RESAMPLINGS = {
 LOSSES = {
     'conservation mae' : loss.ConservationLoss(16, 'mae'),
     'conservation mse' : loss.ConservationLoss(16, 'mse'),
-    'simple gradient mae' : loss.SoftSimpleGradientLoss(16, 'mae'),
-    'simple gradient mse' : loss.SoftSimpleGradientLoss(16, 'mse'),
+    'simple derivative mae' : loss.SoftSimpleDerivativeLoss(16, 'mae'),
+    'simple derivative mse' : loss.SoftSimpleDerivativeLoss(16, 'mse'),
     'continuity mae' : loss.SoftContinuityLoss(16, 'mae'),
     'continuity mse' : loss.SoftContinuityLoss(16, 'mse'),
-    'Sobel mae' : loss.SoftSobelGradientLoss(16, 'mae'),
-    'Sobel mse' : loss.SoftSobelGradientLoss(16, 'mse'),
+    'Sobel gradient magnitude mae' : loss.SoftSobelGradientMagnitudeLoss(16, 'mae'),
+    'Sobel gradient magnitude mse' : loss.SoftSobelGradientMagnitudeLoss(16, 'mse'),
     'G-loss mae' : loss.SoftGLoss(16, 'mae'),
     'G-loss mse' : loss.SoftGLoss(16, 'mse'),
-    'direction continuity mae' : loss.SoftDirectionContinuityLoss(16, 'mae'),
-    'direction continuity mse' : loss.SoftDirectionContinuityLoss(16, 'mse'),
-    'Sobel direction mae' : loss.SoftSobelDirectionContinuityLoss(16, 'mae'),
-    'Sobel direction mse' : loss.SoftSobelDirectionContinuityLoss(16, 'mse'),
+    'gradient direction mae' : loss.SoftGradientDirectionLoss(16, 'mae'),
+    'gradient direction mse' : loss.SoftGradientDirectionLoss(16, 'mse'),
+    'Sobel gradient direction mae' : loss.SoftSobelGradientDirectionLoss(16, 'mae'),
+    'Sobel gradient direction mse' : loss.SoftSobelGradientDirectionLoss(16, 'mse'),
 }
 
 class ReKIS(torch.utils.data.Dataset):
@@ -45,7 +45,7 @@ class ReKIS(torch.utils.data.Dataset):
         Args:
             Y : xarray.DataArray    target variable
             scale_factor : int
-            resampling
+            resampling : method of resampling
         """
         self.scale_factor = scale_factor
 
@@ -69,7 +69,6 @@ class ReKIS(torch.utils.data.Dataset):
 if __name__ == "__main__":
     PATH = '/mnt/data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
     # PATH = '/home/tomas/ctu/current/rci_data/climate/ReKIS/KlimRefDS_v3.1_1961-2023/Raster/Tag/GK4/'
-    print(PATH + "TM/*.nc")
     Y_raw = xarray.open_mfdataset(PATH + "TM/*.nc", decode_coords="all")
     Y_raw = Y_raw["TM"]
 
@@ -84,7 +83,6 @@ if __name__ == "__main__":
         print(resampling_name)
 
         X_upscaled = torch.kron(X, torch.ones(16, 16))
-        print(X_upscaled.shape)
 
         # RMSE and MAE if the LR would be enlarged - not so important
         print('RMSE:', ((X_upscaled - Y) ** 2).mean().sqrt())
