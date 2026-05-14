@@ -371,6 +371,7 @@ Lemma~\ref{l:noble_identity} will be particularly useful when $k$ is a derivativ
 \label{e:mean_sr_derivative}
 \end{equation}
 Thus, in this work, we will refer to $\partial_x^sI^\text{HR}$ as the dilated derivative by factor $s$ of $I^\text{HR}$ with respect to $x$.
+In this work, we will only use the average pooling kernel as $k_R$.
 The interpretation of Equation~\eqref{e:mean_sr_derivative} is that a derivative in a particular direction of a LR image is the same as the derivative in the distance of the downsampling factor of the HR image convolved with the resampling kernel and downsampled.
 This allows us to enforce this relationship when downscaling between LR input and SR model output.
 Furthermore, this approach is valid when applied to the gradient vector field of $I^\text{LR}$:
@@ -485,7 +486,7 @@ Then, for both $I^\text{SR}$ and $I^\text{HR}$, they obtained gradient magnitude
 The loss function was the MSE between $I^\text{SR}$ and $I^\text{HR}$, and the MSE between the gradient magnitudes $M^\text{SR}$ and $M^\text{HR}$.
 However, this is not a constraint as defined in Section~\ref{ss:constraining} because it also depends on the HR image.
 Thus, the modification of this process is required.
-This is done by computing the dilated SR derivatives Section~\ref{ss:dilated_sr_derivative} using Sobel kernels with respect to $x$ and $y$, resulting in $\partial^s_x I^\text{SR}, \partial^s_y I^\text{SR}$.
+This is done by computing the dilated SR derivatives (Section~\ref{ss:dilated_sr_derivative}) using Sobel kernels with respect to $x$ and $y$, resulting in $\partial^s_x I^\text{SR}, \partial^s_y I^\text{SR}$.
 Again, the magnitude of the SR gradient is computed using the Equation~\eqref{e:gradient_magnitude}; however, in this case, the dilated SR derivatives are used:
 \begin{equation}
     \bar{M}^{SR} = \sqrt{\left(\partial^s_x I^\text{SR}\right)^2 + \left(\partial^s_y I^\text{SR}\right)^2}.
