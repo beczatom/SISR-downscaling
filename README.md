@@ -79,12 +79,12 @@ The file contains these columns:
 - **group** - which exact type of constraining was used
   - *1* - unconstrained model
   - *2* - soft-constrained model, conservation law
-  - *3* - soft-constrained model,
-  - *4* - soft-constrained model,
-  - *5* - soft-constrained model,
-  - *6* - soft-constrained model,
-  - *7* - soft-constrained model,
-  - *8* - soft-constrained model,
+  - *3* - soft-constrained model, simple derivative constraint
+  - *4* - soft-constrained model, Sobel gradient magnitude constraint
+  - *5* - soft-constrained model, continuity constraint
+  - *6* - soft-constrained model, G-Loss constraint
+  - *7* - soft-constrained model, gradient direction constraint
+  - *8* - soft-constrained model, Sobel gradient direction constraint
   - *10* - hard-constrained model, conservation law, additive constraint layer
   - *11* - hard-constrained model, conservation law, multiplicative constraint layer
   - *12* - hard-constrained model, conservation law, soft-max constraint layer
